@@ -46,7 +46,8 @@ gcloud services enable \
   firestore.googleapis.com \
   serviceusage.googleapis.com \
   servicenetworking.googleapis.com \
-  iap.googleapis.com
+  iap.googleapis.com \
+  dlp.googleapis.com
 ```
 **Reasoning:** In a new project, these APIs are disabled. Attempting to create resources like Cloud Run services, VPCs, or AlloyDB clusters without enabling their respective APIs is the most common cause of initial Terraform failures.
 
@@ -74,7 +75,19 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
 ```
 **Reasoning:** By default, the Cloud Build agent can build images but cannot deploy them to Cloud Run (`roles/run.admin`) or grant IAM permissions, which might be needed during deployment (`roles/iam.serviceAccountAdmin`). It also needs explicit permission to push the container images it builds to Artifact Registry (`roles/artifactregistry.writer`).
 
-### 1.4. Configure IAP OAuth Consent Screen (Manual UI Step)
+### 1.5. Grant Permissions to the Backend Service Account
+
+The backend agent uses Google Cloud DLP for de-identifying PII. The backend service account needs permission to call the DLP API.
+
+```bash
+# Grant the Backend service account permission to use DLP
+gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
+  --member="serviceAccount:ai-backend-sa@$(gcloud config get-value project).iam.gserviceaccount.com" \
+  --role="roles/dlp.user"
+```
+**Reasoning:** The backend code in `chains/guardrails.py` initializes the DLP client. Without the `roles/dlp.user` role, the backend will return a 500 error whenever it tries to process a chat message.
+
+### 1.6. Configure IAP OAuth Consent Screen (Manual UI Step)
 
 Your Terraform configuration for the load balancer uses Identity-Aware Proxy (IAP), which requires an OAuth Client ID and Secret. This is a **manual, one-time setup** in the Google Cloud Console.
 
