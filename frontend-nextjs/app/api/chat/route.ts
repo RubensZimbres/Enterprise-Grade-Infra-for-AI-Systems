@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleAuth } from 'google-auth-library';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const auth = new GoogleAuth();
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,16 +31,28 @@ export async function POST(req: NextRequest) {
 
     console.log(`Forwarding request to: ${backendUrl}/stream`);
 
+    // Get service-to-service auth headers if not on localhost
+    let serviceAuthHeaders = {};
+    if (!backendUrl.includes('localhost')) {
+      try {
+        // For Cloud Run, the audience is the URL of the receiving service
+        const client = await auth.getIdTokenClient(backendUrl);
+        serviceAuthHeaders = await client.getRequestHeaders();
+        console.log('Generated Service-to-Service OIDC token');
+      } catch (err) {
+        console.error('Failed to get service-to-service ID token:', err);
+        // We continue anyway, as IAP or other checks might still fail downstream
+      }
+    }
+
     // Forward the request to the internal backend
     const response = await fetch(`${backendUrl}/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Forward authentication headers if present
-        ...(req.headers.get('Authorization') && {
-          'Authorization': req.headers.get('Authorization')!,
-        }),
-        // Forward IAP identity headers (Google Cloud)
+        // Attach the service-to-service ID token (Authorization: Bearer <ID_TOKEN>)
+        ...serviceAuthHeaders,
+        // Forward IAP identity headers (Google Cloud) if they exist (for user context)
         ...(req.headers.get('X-Goog-Authenticated-User-Email') && {
           'X-Goog-Authenticated-User-Email': req.headers.get('X-Goog-Authenticated-User-Email')!,
         }),

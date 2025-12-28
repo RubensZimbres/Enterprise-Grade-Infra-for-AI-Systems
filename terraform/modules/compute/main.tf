@@ -172,7 +172,7 @@ resource "google_cloud_run_v2_service" "frontend" {
       image = "us-docker.pkg.dev/cloudrun/container/hello"
       
       env {
-        name  = "NEXT_PUBLIC_BACKEND_URL"
+        name  = "BACKEND_URL"
         value = google_cloud_run_v2_service.backend.uri
       }
     }
@@ -181,17 +181,17 @@ resource "google_cloud_run_v2_service" "frontend" {
 
 # --- 5. Security: Allow Frontend to invoke Backend ---
 
-resource "google_cloud_run_service_iam_member" "frontend_invokes_backend" {
+resource "google_cloud_run_v2_service_iam_member" "frontend_invokes_backend" {
   location = google_cloud_run_v2_service.backend.location
-  service  = google_cloud_run_v2_service.backend.name
+  name     = google_cloud_run_v2_service.backend.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.frontend_sa.email}"
 }
 
 # Allow IAP Service Agent to invoke Frontend (Used by Load Balancer)
-resource "google_cloud_run_service_iam_member" "lb_invokes_frontend" {
+resource "google_cloud_run_v2_service_iam_member" "lb_invokes_frontend" {
   location = google_cloud_run_v2_service.frontend.location
-  service  = google_cloud_run_v2_service.frontend.name
+  name     = google_cloud_run_v2_service.frontend.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-iap.iam.gserviceaccount.com"
 }
