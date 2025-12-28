@@ -60,6 +60,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
   template {
     service_account = google_service_account.backend_sa.email
+    timeout         = "300s"
     
     # SCALABILITY: Define autoscaling limits
     scaling {
@@ -80,6 +81,13 @@ resource "google_cloud_run_v2_service" "backend" {
     containers {
       # Placeholder image. You MUST replace this with your actual Artifact Registry image later.
       image = "us-docker.pkg.dev/cloudrun/container/hello" 
+
+      resources {
+        limits = {
+          cpu    = "4"
+          memory = "8Gi"
+        }
+      }
 
       # In the google_cloud_run_v2_service "backend" resource...
       env {
@@ -134,7 +142,11 @@ resource "google_cloud_run_v2_service" "backend" {
 resource "google_secret_manager_secret" "ai_api_key_secret" {
   secret_id = "ai-provider-api-key"
   replication {
-    auto {}
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
   }
 }
 
@@ -162,6 +174,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
   template {
     service_account = google_service_account.frontend_sa.email
+    timeout         = "300s"
     
     # SCALABILITY: Define autoscaling limits
     scaling {
@@ -175,13 +188,20 @@ resource "google_cloud_run_v2_service" "frontend" {
         network    = var.vpc_name
         subnetwork = var.subnet_name
       }
-      egress = "PRIVATE_RANGES_ONLY"
+      egress = "ALL_TRAFFIC"
     }
 
     containers {
       # Placeholder image. You MUST replace this with your actual Artifact Registry image later.
       image = "us-docker.pkg.dev/cloudrun/container/hello"
       
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "2Gi"
+        }
+      }
+
       env {
         name  = "BACKEND_URL"
         value = google_cloud_run_v2_service.backend.uri

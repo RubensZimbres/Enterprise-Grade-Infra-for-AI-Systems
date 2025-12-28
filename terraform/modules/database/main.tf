@@ -22,7 +22,11 @@ resource "random_password" "db_password" {
 resource "google_secret_manager_secret" "db_pass_secret" {
   secret_id = "${var.project_id}-cloudsql-password"
   replication {
-    auto {}
+    user_managed {
+      replicas {
+        location = var.region
+      }
+    }
   }
 }
 
@@ -39,7 +43,7 @@ resource "google_sql_database_instance" "postgres" {
   database_version = "POSTGRES_15"
 
   settings {
-    tier = "db-g1-small" # Cost-efficient tier. Adjust based on load.
+    tier = "db-custom-1-3840" # Cost-efficient tier. Adjust based on load.
 
     ip_configuration {
       ipv4_enabled    = false # No public IP for security

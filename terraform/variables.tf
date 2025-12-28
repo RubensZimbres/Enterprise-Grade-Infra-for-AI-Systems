@@ -29,9 +29,11 @@ variable "iap_client_secret" {
 variable "billing_account" {
   description = "The billing account ID"
   type        = string
+  default     = "11111111111111111"
 }
 
 variable "notification_email" {
   description = "Email for budget and anomaly alerts"
   type        = string
+  default     = "user@gmail.com"
 }

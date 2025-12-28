@@ -1,4 +1,4 @@
-# Enterprise AI Platform: RAG with Guardrails in Google Cloud
+# Enterprise AI Platform: RAG with Guardrails in Google Cloud Deployed via Terraform
 
 This repository contains a full-stack, secure AI platform deployed on Google Cloud. It enables private, internal document chat with enterprise-grade security and automated PII protection, deployed via Terraform and Cloud Build.
 
@@ -155,17 +155,17 @@ The knowledge base is populated using the `ingest.py` script.
     ```
 
 ### Infrastructure (Terraform)
--   **Network (Zero-Trust):** 
+-   **Network (Zero-Trust):**
     -   **VPC Isolation:** A custom VPC with **Private Google Access**, ensuring all internal traffic stays within the Google network.
     -   **Private Service Access (PSA):** High-speed VPC Peering for Cloud SQL, Redis, and Vertex AI.
     -   **Cloud NAT:** Egress gateway allowing private backend instances to securely reach the internet for updates without exposing them to incoming public traffic.
--   **Compute & Identity:** 
+-   **Compute & Identity:**
     -   **Dual-Agent Deployment:** Separate Cloud Run services for Frontend and Backend, each with its own **Least-Privilege Service Account**.
     -   **IAM Hardening:** Precise roles granted for Vertex AI (`roles/aiplatform.user`), Secret Manager (`roles/secretmanager.secretAccessor`), and Cloud SQL (`roles/cloudsql.client`).
 -   **Governance & Cost Control:**
     -   **Automated Budgeting:** Proactive monthly budget alerts at 50%, 90%, and 100% of the target spend.
     -   **Anomaly Detection:** Cloud Monitoring policies that trigger email alerts if error rates spike or high-severity logs are detected.
--   **Edge Security (Ingress):** 
+-   **Edge Security (Ingress):**
     -   **Global Load Balancing:** HTTPS termination with **Managed SSL Certificates**.
     -   **Cloud Armor WAF:** Active protection against OWASP Top 10 (SQLi, XSS) and IP-based rate limiting (500 req/min).
     -   **Identity-Aware Proxy (IAP):** Provides a central authentication layer, ensuring only authorized enterprise users can reach the frontend.
@@ -363,3 +363,6 @@ gcloud builds submit --config cloudbuild-frontend.yaml .
 **Reasoning:** This is the final step that replaces the placeholder services with your actual Next.js and FastAPI applications, making the platform live.
 
 By following these steps in order, you can systematically address the most common permission and connectivity gaps, leading to a successful and secure deployment.
+
+**Acknowledgements**
+✨ Google ML Developer Programs and Google Developers Program supported this work by providing Google Cloud Credits (and awesome tutorials for the Google Developer Experts)✨

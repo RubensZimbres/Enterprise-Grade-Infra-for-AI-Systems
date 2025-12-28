@@ -90,7 +90,7 @@ resource "google_compute_backend_service" "default" {
   name      = "${var.project_id}-backend-service"
   protocol  = "HTTP" # Cloud Run talks HTTP internally
   port_name = "http"
-  timeout_sec = 30
+  timeout_sec = 300
 
   # Attach Cloud Armor
   security_policy = google_compute_security_policy.security_policy.id
