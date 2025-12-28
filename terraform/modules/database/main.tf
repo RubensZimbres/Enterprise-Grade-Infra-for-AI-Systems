@@ -36,7 +36,7 @@ resource "google_secret_manager_secret_version" "db_pass_version" {
 resource "google_alloydb_cluster" "default" {
   cluster_id = "${var.project_id}-alloydb-cluster"
   location   = var.region
-  network    = var.network_id # Must come from the Network Module
+  network    = var.network_id # Fixed: Use the variable passed from the root
 
   initial_user {
     user     = "postgres"
@@ -50,7 +50,7 @@ resource "google_alloydb_cluster" "default" {
     enabled       = true
     weekly_schedule {
       days_of_week = ["MONDAY", "THURSDAY"]
-      
+
       start_times {
         hours   = 2
         minutes = 0
@@ -78,7 +78,7 @@ resource "google_alloydb_instance" "primary" {
 
   # Flags to optimize for Vector Search (pgvector)
   database_flags = {
-    "work_mem" = "64MB" 
+    "work_mem" = "64MB"
     # Note: pgvector extension must be enabled via SQL ("CREATE EXTENSION vector;")
     # Terraform builds the house; it doesn't furnish the rooms.
   }
@@ -96,7 +96,7 @@ resource "google_alloydb_instance" "read_pool" {
   }
 
   machine_config {
-    cpu_count = 2 
+    cpu_count = 2
   }
 
   depends_on = [google_alloydb_instance.primary]
@@ -109,13 +109,13 @@ resource "google_firestore_database" "firestore" {
   name        = "(default)"
   # Firestore locations are sticky. Once set, they cannot be changed.
   # We match the region used for the rest of the stack.
-  location_id = var.region 
+  location_id = var.region
   type        = "FIRESTORE_NATIVE"
 
   # concurrency_mode: OPTIMISTIC is standard for modern apps to handle
   # race conditions without aggressive locking.
-  concurrency_mode = "OPTIMISTIC" 
-  
+  concurrency_mode = "OPTIMISTIC"
+
   # Delete protection prevents accidental wiping of your user history.
   # Set to false only if you are in a sandbox/dev environment.
   delete_protection_state = "DELETE_PROTECTION_DISABLED"

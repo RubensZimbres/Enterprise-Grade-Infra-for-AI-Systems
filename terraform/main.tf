@@ -15,7 +15,7 @@ module "database" {
 
   project_id = var.project_id
   region     = var.region
-  network_id = module.network.vpc_id
+  network_id = module.network.network_id
   depends_on = [module.network]
 }
 
