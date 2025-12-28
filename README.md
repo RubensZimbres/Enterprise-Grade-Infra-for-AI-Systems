@@ -50,15 +50,20 @@ This platform implements a robust, multi-layered security strategy. Following an
 
 This platform has been upgraded for production-scale performance, cost efficiency, and sub-second perceived latency:
 
-### Cost Control
-- **Gemini 3 Flash:** Switched to the high-efficiency Flash model (`gemini-3-flash-preview`) to reduce token costs by ~10x compared to Gemini Pro.
-- **DLP Fast-Path Guardrails:** Implemented a regex-based "pre-check" for PII. This avoids expensive Google Cloud DLP API calls for every request, invoking the API only when potential PII patterns are detected.
+### 1. Global Scalability & High Availability
+- **Horizontal Autoscaling:** Both Frontend and Backend services are configured for automatic horizontal scaling in Cloud Run. They can scale from zero to hundreds of concurrent instances to handle massive traffic spikes.
+- **Cold-Start Mitigation:** The Frontend service maintains a minimum of 1 warm instance (`min_instance_count = 1`), ensuring immediate responsiveness and eliminating "cold start" latency for users.
+- **AlloyDB Read Pool:** Implemented a dedicated Read Pool instance in AlloyDB. This horizontally scales read capacity for the vector database, ensuring that heavy document retrieval and search operations do not bottleneck the primary write instance.
 
-### Latency Optimization
-- **Asynchronous I/O:** Backend fully migrated to `asyncpg` for non-blocking database operations and **asynchronous thread pooling** for DLP API calls.
-- **Secure Server-Side Proxy:** The frontend routes requests to the backend via a Next.js API Route. This allows the frontend to stay strictly client-side for the UI while leveraging a secure server-side hop to reach the private VPC backend.
-- **Real-time Streaming:** Implemented Server-Sent Events (SSE) from the LLM through to the Next.js frontend, providing immediate feedback (Time-To-First-Token).
-- **Stateless Next.js:** High-concurrency frontend significantly reduces server-side memory pressure compared to Streamlit.
+### 2. Latency & Performance Optimization
+- **Asynchronous I/O (Neural Core):** The backend is built on **FastAPI** and uses **`asyncpg`** for non-blocking database connections. This allows a single instance to handle thousands of concurrent requests with minimal resource usage.
+- **Server-Sent Events (SSE):** Real-time token streaming from the LLM (Gemini 1.5 Flash) directly to the Next.js UI provides sub-second "Time-To-First-Token," creating a highly responsive user experience.
+- **Asynchronous Thread Pooling:** Expensive operations like PII de-identification via Google Cloud DLP are offloaded to asynchronous background threads, preventing them from blocking the main request-response cycle.
+
+### 3. Cost Control & Efficiency
+- **Gemini 1.5 Flash Integration:** Utilizes the high-efficiency Flash model (`gemini-1.5-flash`) for a 10x reduction in token costs and significantly lower latency compared to larger models.
+- **DLP Fast-Path Guardrails:** Implemented a high-performance regex-based "pre-check" for PII. This intelligently bypasses expensive Google Cloud DLP API calls for clean content, invoking the API only when potential PII patterns are detected.
+- **Global CDN Caching:** Google Cloud CDN is enabled at the Load Balancer level to cache static assets and common frontend resources globally, reducing origin server load and improving page load times.
 
 ## Local Development & Configuration
 

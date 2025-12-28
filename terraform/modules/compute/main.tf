@@ -54,6 +54,12 @@ resource "google_cloud_run_v2_service" "backend" {
   template {
     service_account = google_service_account.backend_sa.email
     
+    # SCALABILITY: Define autoscaling limits
+    scaling {
+      min_instance_count = 0 
+      max_instance_count = 10 # Scalable to 50 concurrent instances
+    }
+
     # DIRECT VPC EGRESS: Connects container to the Private Subnet
     vpc_access{
       network_interfaces {
@@ -146,6 +152,12 @@ resource "google_cloud_run_v2_service" "frontend" {
   template {
     service_account = google_service_account.frontend_sa.email
     
+    # SCALABILITY: Keep 1 instance warm to eliminate cold starts for users
+    scaling {
+      min_instance_count = 1 
+      max_instance_count = 10 # Frontend scales wider to handle global traffic
+    }
+
     # Frontend also needs VPC access if it needs to talk to the Backend via internal DNS
     vpc_access{
       network_interfaces {

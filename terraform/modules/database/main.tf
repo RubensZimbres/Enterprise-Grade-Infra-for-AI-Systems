@@ -84,6 +84,24 @@ resource "google_alloydb_instance" "primary" {
   }
 }
 
+# --- 3.1 The AlloyDB Instance (Read Pool) ---
+
+resource "google_alloydb_instance" "read_pool" {
+  cluster       = google_alloydb_cluster.default.name
+  instance_id   = "${var.project_id}-alloydb-read-pool"
+  instance_type = "READ_POOL"
+
+  read_pool_config {
+    node_count = 2 # Scaling read capacity horizontally
+  }
+
+  machine_config {
+    cpu_count = 2 
+  }
+
+  depends_on = [google_alloydb_instance.primary]
+}
+
 # --- 4. Firestore (Short-Term Memory) ---
 
 resource "google_firestore_database" "firestore" {
