@@ -62,7 +62,7 @@ This platform implements a robust, multi-layered security strategy. Following an
 ### 3. AI & LLM Specific Security (OWASP Top 10 for LLM)
 -   **Prompt Injection Mitigation:** The RAG prompt template uses strict structural delimiters (`----------`) and prioritized system instructions to ensure the model adheres to its enterprise role and ignores adversarial overrides contained within documents or user queries.
 -   **Sensitive Data Leakage (PII):** Google Cloud DLP (Data Loss Prevention) is integrated into the core pipeline with a **Regex Fast-Path** and **Asynchronous Threading**. This automatically detects and masks PII in real-time without blocking the main event loop, ensuring high performance while minimizing API costs.
--   **Knowledge Base Security:** Data is stored in a private AlloyDB instance reachable only via a Serverless VPC Access connector, ensuring the "Brain" of the AI is never exposed to the public internet.
+-   **Knowledge Base Security:** Data is stored in a private Cloud SQL (PostgreSQL) instance reachable only via a Serverless VPC Access connector, ensuring the "Brain" of the AI is never exposed to the public internet.
 
 ### 4. Infrastructure & Secret Management
 -   **Secret Hardening:** Passwords and API keys are managed via Google Secret Manager. Terraform `lifecycle` policies prevent accidental exposure of these secrets in state files.
@@ -77,7 +77,7 @@ This platform has been upgraded for production-scale performance, cost efficienc
 ### 1. Global Scalability & High Availability
 - **Horizontal Autoscaling:** Both Frontend and Backend services are configured for automatic horizontal scaling in Cloud Run. They can scale from zero to hundreds of concurrent instances to handle massive traffic spikes.
 - **Cold-Start Mitigation:** The Frontend service maintains a minimum of 1 warm instance (`min_instance_count = 1`), ensuring immediate responsiveness and eliminating "cold start" latency for users.
-- **AlloyDB Read Pool:** Implemented a dedicated Read Pool instance in AlloyDB. This horizontally scales read capacity for the vector database, ensuring that heavy document retrieval and search operations do not bottleneck the primary write instance.
+- **Cloud SQL Read Pool:** While currently using a single instance for cost efficiency, the architecture is ready for a dedicated Read Replica in Cloud SQL. This horizontally scales read capacity for the vector database, ensuring that heavy document retrieval and search operations do not bottleneck the primary write instance.
 
 ### 2. Latency & Performance Optimization
 - **Asynchronous I/O (Neural Core):** The backend is built on **FastAPI** and uses **`asyncpg`** for non-blocking database connections. This allows a single instance to handle thousands of concurrent requests with minimal resource usage.
@@ -102,9 +102,12 @@ The backend no longer uses a `.env` file. You must export these variables in you
 | :--- | :--- |
 | `PROJECT_ID` | Your Google Cloud Project ID. |
 | `REGION` | GCP region (e.g., `us-central1`). |
-| `DB_HOST` | IP of your AlloyDB instance (or `localhost` if using proxy). |
+| `DB_HOST` | IP of your Cloud SQL instance (or `127.0.0.1` if using the Cloud SQL Auth Proxy). |
+| `DB_USER` | Database username (default: `postgres`). |
 | `DB_PASSWORD` | Database password (mapped from Secret Manager in prod). |
 | `DB_NAME` | Name of the database (default: `postgres`). |
+| `REDIS_HOST` | Host for Redis semantic caching (default: `localhost`). |
+| `GOOGLE_API_KEY` | Your Google/Vertex AI API key (if not using ADC). |
 
 **Frontend (`frontend-nextjs/.env.local`):**
 | Variable | Description |
@@ -139,7 +142,7 @@ npm run dev
 The knowledge base is populated using the `ingest.py` script.
 
 1.  **Prepare Data:** Place your PDF documents in `backend-agent/data/`.
-2.  **Initialize Database:** Connect to AlloyDB and run:
+2.  **Initialize Database:** Connect to Cloud SQL and run:
     ```sql
     CREATE DATABASE vector_store;
     \c vector_store;
@@ -233,14 +236,14 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
   secretmanager.googleapis.com \
-  alloydb.googleapis.com \
+  sqladmin.googleapis.com \
   firestore.googleapis.com \
   serviceusage.googleapis.com \
   servicenetworking.googleapis.com \
   iap.googleapis.com \
   dlp.googleapis.com
 ```
-**Reasoning:** In a new project, these APIs are disabled. Attempting to create resources like Cloud Run services, VPCs, or AlloyDB clusters without enabling their respective APIs is the most common cause of initial Terraform failures.
+**Reasoning:** In a new project, these APIs are disabled. Attempting to create resources like Cloud Run services, VPCs, or Cloud SQL instances without enabling their respective APIs is the most common cause of initial Terraform failures.
 
 ### 1.3. Grant Permissions to the Cloud Build Service Account
 
@@ -324,11 +327,11 @@ Your Terraform `ingress` module provisioned a static IP for the load balancer. Y
 
 **Reasoning:** The managed SSL certificate and HTTPS routing will not work until your domain correctly resolves to the load balancer's IP address.
 
-### 2.2. Enable `pgvector` Extension in AlloyDB
+### 2.2. Enable `pgvector` Extension in Cloud SQL
 
-Your Terraform code correctly provisions the AlloyDB instance with flags optimized for `pgvector`, but it cannot enable the extension itself.
+Your Terraform code correctly provisions the Cloud SQL instance with flags optimized for `pgvector`, but it cannot enable the extension itself.
 
-1.  **Connect to the AlloyDB instance:** Use your preferred PostgreSQL client (like `psql` or a GUI tool) to connect to the database using the IP address and the password stored in Secret Manager.
+1.  **Connect to the Cloud SQL instance:** Use your preferred PostgreSQL client (like `psql` or a GUI tool) to connect to the database using the IP address and the password stored in Secret Manager.
 2.  **Run the SQL Command:** Execute the following command in your database to enable the vector extension.
     ```sql
     CREATE EXTENSION IF NOT EXISTS vector;
