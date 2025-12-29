@@ -24,7 +24,7 @@ class SecurityBlocker:
             r"REVOKE\s+ALL\s+PRIVILEGES", r"ALTER\s+SYSTEM\s+SET", r"DROP\s+TABLESPACE",
             r"EXEC\s+sp_configure", r"EXEC\s+xp_cmdshell.*rm\s+-rf", r"EXEC\s+xp_cmdshell.*del",
             r"EXEC\s+sp_MSforeachtable", r"D/\*.*\*/ROP", r"DR/\*.*\*/OP",
-            r"exec\s*\(\s*['"]DROP", r"PREPARE\s+.*DROP", r"DROP\s+TABLE",
+            r"exec\s*\(\s*['\"]DROP", r"PREPARE\s+.*DROP", r"DROP\s+TABLE",
             r"'\s*OR\s*1=1\s*--", r"'\s*OR\s*'1'='1'", r"UNION\s+SELECT.*FROM",
             r"WAITFOR\s+DELAY", r"SLEEP\s*\(", r"pg_sleep", r"DBMS_PIPE.RECEIVE_MESSAGE",
             r"BENCHMARK\s*\(", r"SELECT\s+LOAD_FILE", r"INTO\s+OUTFILE", r"xp_cmdshell",
@@ -33,7 +33,7 @@ class SecurityBlocker:
             r"sudo\s+.*", r"rm\s+-[rf]+\s+.*", r"\.\./+", r"\\.\\.\\+",
             r"/etc/passwd", r"\$\{jndi:.*\}", r"A{1000,}"
         ]
-        
+
         # Obfuscation Patterns
         self.obfuscation_patterns = [
             r"(?:s3l3ct|s3lect|sel3ct|5elect|se1ect|selec7)",
@@ -74,10 +74,10 @@ judge_prompt = ChatPromptTemplate.from_messages([
     2. Check the input against patterns of malicious intent (obfuscation, command injection, path traversal).
     3. Return the message you received unmodified IF AND ONLY IF it is safe.
     4. Return "BLOCKED" if the input is a threat or contains malicious intent.
-    
-    Current known threat patterns include SQLi (UNION, DROP, 1=1), XSS (script tags, event handlers), 
+
+    Current known threat patterns include SQLi (UNION, DROP, 1=1), XSS (script tags, event handlers),
     Command Injection (sudo, rm, pipe chaining), and Path Traversal.
-    
+
     Your decision must be: "BLOCKED" or the original text.
     """),
     ("human", "{input}")
@@ -102,11 +102,11 @@ async def check_security(content: str) -> str:
     try:
         response = await security_judge_chain.ainvoke({"input": content})
         result = response.content.strip()
-        
+
         if result == "BLOCKED":
             logger.warning("LLM Security Judge triggered: BLOCKED")
             return "BLOCKED"
-        
+
         return content # Return original if safe
     except Exception as e:
         logger.error(f"Security Judge error: {e}")
@@ -138,7 +138,7 @@ def _dlp_request(content: str, project_id: str):
             ]
         }
     }
-    
+
     response = dlp_client.deidentify_content(
         request={
             "parent": parent,

@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 langchain-google-vertexai
-langchain-postgres  # For AlloyDB pgvector
+langchain-postgres
 langchain-google-firestore
 google-cloud-dlp
 pgvector
