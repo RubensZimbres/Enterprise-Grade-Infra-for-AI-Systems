@@ -137,11 +137,15 @@ The backend no longer uses a `.env` file. You must export these variables in you
 ### 2. Running the Backend Locally
 
 ```bash
-cd backend-agent && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt                                                                                         │
+python -m venv myenv
+source myenv/bin/activate
+pip install -r requirements.txt
 # Export your variables
 export PROJECT_ID="your-project"
 export REGION="us-central1"
-# ... etc
+export DB_HOST="your_db_host_ip"
+export DB_PASSWORD="your_db_password"
+
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
