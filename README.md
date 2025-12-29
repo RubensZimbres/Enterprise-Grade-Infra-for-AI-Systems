@@ -159,7 +159,7 @@ npm install autoprefixer --save-dev
 npm run dev
 ```
 
-<img src="[https://raw.githubusercontent.com/RubensZimbres/my-ai-platform/main/images/frontend.jpg](https://github.com/RubensZimbres/my-ai-platform/blob/main/images/frontend.png" width="600" />
+<img src="https://github.com/RubensZimbres/my-ai-platform/blob/development/images/frontend.png" width="600" />
 
 
 ## Ingestion Pipeline
