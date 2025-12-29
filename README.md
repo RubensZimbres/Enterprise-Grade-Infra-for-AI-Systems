@@ -1,4 +1,4 @@
-# Enterprise AI Platform: RAG with Guardrails in Google Cloud
+# Enterprise AI Platform: RAG with Guardrails in Google Cloud Deployed via Terraform
 
 This repository contains a full-stack, secure AI platform deployed on Google Cloud. It enables private, internal document chat with enterprise-grade security and automated PII protection, deployed via Terraform and Cloud Build.
 
@@ -89,6 +89,23 @@ This platform has been upgraded for production-scale performance, cost efficienc
 - **DLP Fast-Path Guardrails:** Implemented a high-performance regex-based "pre-check" for PII. This intelligently bypasses expensive Google Cloud DLP API calls for clean content, invoking the API only when potential PII patterns are detected.
 - **Global CDN Caching:** Google Cloud CDN is enabled at the Load Balancer level to cache static assets and common frontend resources globally, reducing origin server load and improving page load times.
 
+## Performance & Scaling Roadmap
+
+The current infrastructure is designed for high efficiency and is benchmarked to handle approximately **2,500 users per hour** with the standard provisioned resources.
+
+### How to Actually Reach 1,000,000 Users per Hour
+
+To handle this load, you must change the architecture. You cannot just "scale up" the Terraform parameters.
+
+#### Solution A: Offload Vector Search (Recommended)
+Stop asking Postgres to do the math. Use a specialized engine designed for high-throughput vector search.
+
+*   **Use:** Google Vertex AI Vector Search (formerly Matching Engine).
+*   **Why:** It is fully managed and designed to handle billions of vectors and thousands of QPS with <10ms latency.
+*   **Architecture Change:**
+    *   **Postgres:** Only stores Chat History and User Metadata (cheap writes).
+    *   **Vertex AI:** Handles the 2,800 QPS vector load.
+
 ## Local Development & Configuration
 
 To run the platform locally for testing, you need to set up environment variables for both components.
@@ -155,17 +172,17 @@ The knowledge base is populated using the `ingest.py` script.
     ```
 
 ### Infrastructure (Terraform)
--   **Network (Zero-Trust):** 
+-   **Network (Zero-Trust):**
     -   **VPC Isolation:** A custom VPC with **Private Google Access**, ensuring all internal traffic stays within the Google network.
     -   **Private Service Access (PSA):** High-speed VPC Peering for Cloud SQL, Redis, and Vertex AI.
     -   **Cloud NAT:** Egress gateway allowing private backend instances to securely reach the internet for updates without exposing them to incoming public traffic.
--   **Compute & Identity:** 
+-   **Compute & Identity:**
     -   **Dual-Agent Deployment:** Separate Cloud Run services for Frontend and Backend, each with its own **Least-Privilege Service Account**.
     -   **IAM Hardening:** Precise roles granted for Vertex AI (`roles/aiplatform.user`), Secret Manager (`roles/secretmanager.secretAccessor`), and Cloud SQL (`roles/cloudsql.client`).
 -   **Governance & Cost Control:**
     -   **Automated Budgeting:** Proactive monthly budget alerts at 50%, 90%, and 100% of the target spend.
     -   **Anomaly Detection:** Cloud Monitoring policies that trigger email alerts if error rates spike or high-severity logs are detected.
--   **Edge Security (Ingress):** 
+-   **Edge Security (Ingress):**
     -   **Global Load Balancing:** HTTPS termination with **Managed SSL Certificates**.
     -   **Cloud Armor WAF:** Active protection against OWASP Top 10 (SQLi, XSS) and IP-based rate limiting (500 req/min).
     -   **Identity-Aware Proxy (IAP):** Provides a central authentication layer, ensuring only authorized enterprise users can reach the frontend.
@@ -363,3 +380,6 @@ gcloud builds submit --config cloudbuild-frontend.yaml .
 **Reasoning:** This is the final step that replaces the placeholder services with your actual Next.js and FastAPI applications, making the platform live.
 
 By following these steps in order, you can systematically address the most common permission and connectivity gaps, leading to a successful and secure deployment.
+
+**Acknowledgements**
+✨ Google ML Developer Programs and Google Developers Program supported this work by providing Google Cloud Credits (and awesome tutorials for the Google Developer Experts)✨
