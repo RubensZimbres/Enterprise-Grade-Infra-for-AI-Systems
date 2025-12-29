@@ -65,3 +65,24 @@ module "ingress" {
 output "public_ip" {
   value = module.ingress.load_balancer_ip
 }
+
+module "storage" {
+  source = "./modules/storage"
+
+  project_id = var.project_id
+  region     = var.region
+}
+
+module "function" {
+  source = "./modules/function"
+
+  project_id            = var.project_id
+  region                = var.region
+  bucket_name           = module.storage.data_bucket_name
+  source_bucket_name    = module.storage.source_bucket_name
+  db_host               = module.database.instance_ip
+  db_name               = "postgres" # Default
+  db_user               = "postgres" # Default
+  db_password_secret_id = module.database.secret_id
+  depends_on            = [module.database, module.storage]
+}

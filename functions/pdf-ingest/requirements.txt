@@ -1,0 +1,9 @@
+functions-framework==3.*
+google-cloud-storage
+langchain-community
+langchain-text-splitters
+langchain-google-vertexai
+langchain-postgres
+asyncpg
+pgvector
+pypdf

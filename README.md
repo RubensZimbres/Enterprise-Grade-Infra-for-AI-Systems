@@ -16,6 +16,25 @@ The platform is composed of three main layers:
 2.  **Backend Agent (Neural Core):** An asynchronous **FastAPI** service orchestrating the RAG pipeline, secured by OIDC authentication and internal-only networking.
 3.  **Infrastructure (Terraform):** Fully automated deployment using "Infrastructure as Code."
 
+## Architecture Decisions & Rationale
+
+### 1. Authentication: Google Identity (IAP) vs. Firebase
+I explicitly chose **Identity-Aware Proxy (IAP)** over Firebase Authentication for this enterprise architecture.
+*   **Zero-Code Auth:** IAP handles the entire login flow (OIDC, 2FA, session management) at the infrastructure level (Load Balancer) before the request ever reaches the container. This eliminates the need for complex auth logic in the application code.
+*   **Zero Trust:** It enforces a "Zero Trust" model where access is granted based on identity and context at the edge, rather than just at the application level.
+*   **Enterprise Integration:** It integrates seamlessly with Google Workspace identities, making it ideal for internal enterprise tools.
+
+### 2. Communication: Asyncio vs. Pub/Sub
+While Pub/Sub is excellent for decoupled, asynchronous background tasks, I utilize **Python's `asyncio`** within FastAPI for the chat interface.
+*   **Real-Time Requirement:** Chat users expect immediate, streaming responses. Pub/Sub is a "fire-and-forget" mechanism designed for background processing, not for maintaining the open, bidirectional HTTP connections required for streaming LLM tokens to a user in real-time.
+*   **Concurrency:** `asyncio` allows a single Cloud Run instance to handle thousands of concurrent waiting connections (e.g., waiting for Vertex AI to reply) without blocking, providing high throughput for chat without the architectural complexity of a message queue.
+
+### 3. Event-Driven Ingestion: Cloud Functions
+I moved the document ingestion logic from a manual script to a **Google Cloud Function** triggered by Cloud Storage events.
+*   **Automation:** Uploading a PDF to the `data_bucket` automatically triggers the function to parse, chunk, embed, and upsert the document into the vector database.
+*   **Efficiency:** This is a serverless, event-driven approach. Resources are only consumed when a file is uploaded, rather than having a long-running service waiting for input.
+*   **Scalability:** Each file upload triggers a separate function instance, allowing parallel processing of mass uploads without blocking the main chat application.
+
 ## AI Engine & Knowledge Core: Memory & RAG Implementation
 
 The Backend Agent is designed as a stateful, retrieval-augmented system that balances high-performance search with secure session management.
@@ -164,20 +183,32 @@ npm run dev
 
 ## Ingestion Pipeline
 
-The knowledge base is populated using the `ingest.py` script.
+The knowledge base is populated via an automated **Event-Driven Pipeline** using Google Cloud Functions.
 
-1.  **Prepare Data:** Place your PDF documents in `backend-agent/data/`.
-2.  **Initialize Database:** Connect to Cloud SQL and run:
+1.  **Initialize Database:**
+    Connect to your Cloud SQL instance (e.g., via Cloud Shell or a local client) and ensure the vector extension is enabled:
     ```sql
-    CREATE DATABASE vector_store;
-    \c vector_store;
     CREATE EXTENSION IF NOT EXISTS vector;
     ```
-3.  **Run Ingestion:**
+
+2.  **Upload Documents:**
+    Upload your PDF documents to the **Data Bucket** created by Terraform (named `pdf-ingest-data-[suffix]`). You can do this via the Google Cloud Console or CLI:
     ```bash
-    cd backend-agent
-    python ingest.py
+    # Find your bucket name
+    gsutil ls | grep pdf-ingest-data
+
+    # Upload files
+    gsutil cp local_docs/*.pdf gs://YOUR_DATA_BUCKET_NAME/
     ```
+
+3.  **Automatic Processing:**
+    The upload automatically triggers the **PDF Ingest Function**, which will:
+    *   Parse the PDF text.
+    *   Chunk the content (1000 tokens).
+    *   Generate embeddings via Vertex AI.
+    *   Upsert the vectors into the Cloud SQL database.
+
+    You can view the logs in the Cloud Console under **Cloud Run Functions** -> `pdf-ingest-function` -> **Logs** to verify successful ingestion.
 
 ### Infrastructure (Terraform)
 -   **Network (Zero-Trust):**
