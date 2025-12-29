@@ -12,7 +12,6 @@ variable "region" {
 variable "domain_name" {
   description = "Domain name for the frontend (e.g., ai.example.com)"
   type        = string
-  default     = ""
 }
 
 variable "iap_client_id" {

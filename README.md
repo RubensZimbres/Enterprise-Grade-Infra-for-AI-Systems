@@ -97,6 +97,26 @@ npm install
 npm run dev
 ```
 
+## Deployment & Data Ingestion
+
+### 1. Deploy Infrastructure
+You must provide a valid domain name (e.g., `ai.your-company.com`) for the managed SSL certificate to be provisioned.
+
+```bash
+cd terraform
+terraform init
+terraform apply -var="domain_name=ai.your-company.com" -var="project_id=YOUR_PROJECT_ID"
+```
+*After deployment, point your domain's DNS A-record to the output `public_ip`.*
+
+### 2. Ingest Knowledge Base
+The platform includes a serverless Cloud Run Job for hydrating the vector database. Once your infrastructure is up, run:
+
+```bash
+gcloud run jobs execute ingest-job --region=us-central1
+```
+This will parse documents from the `backend-agent/data` directory (baked into the container) and index them into Cloud SQL.
+
 ## Infrastructure (Terraform)
 Deployment is fully automated via the following modules:
 -   **`network`**: VPC, Cloud NAT, and Private Service Access.

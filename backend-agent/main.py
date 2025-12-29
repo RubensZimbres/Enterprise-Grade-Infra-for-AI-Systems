@@ -67,7 +67,7 @@ def health_check():
     return {"status": "healthy"}
 
 @app.post("/chat", response_model=ChatResponse)
-@limiter.limit("5/minute")
+@limiter.limit("60/minute")
 async def chat_endpoint(request: ChatRequest, fastapi_req: Request, user_email: str = Depends(get_current_user)):
     """
     Main entry point for the Frontend Agent.
@@ -88,7 +88,7 @@ async def chat_endpoint(request: ChatRequest, fastapi_req: Request, user_email: 
         raise HTTPException(status_code=500, detail="Internal Processing Error")
 
 @app.post("/stream")
-@limiter.limit("5/minute")
+@limiter.limit("60/minute")
 async def stream_endpoint(request: ChatRequest, fastapi_req: Request, user_email: str = Depends(get_current_user)):
     """
     Streaming version of the chat endpoint.

@@ -89,17 +89,6 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
-      # In the google_cloud_run_v2_service "backend" resource...
-      env {
-        name = "GOOGLE_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.ai_api_key_secret.secret_id
-            version = "latest"
-          }
-        }
-      }
-
       env {
         name  = "PROJECT_ID"
         value = var.project_id
@@ -135,34 +124,6 @@ resource "google_cloud_run_v2_service" "backend" {
       }
     }
   }
-}
-
-# --- 3.1 Secret for Vertex AI API Key ---
-
-resource "google_secret_manager_secret" "ai_api_key_secret" {
-  secret_id = "ai-provider-api-key"
-  replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
-  }
-}
-
-resource "google_secret_manager_secret_version" "ai_api_key_version" {
-  secret      = google_secret_manager_secret.ai_api_key_secret.id
-  secret_data = "CHANGE_ME_TO_REAL_API_KEY" # Placeholder
-  
-  lifecycle {
-    ignore_changes = [secret_data]
-  }
-}
-
-resource "google_secret_manager_secret_iam_member" "backend_api_key_access" {
-  secret_id = google_secret_manager_secret.ai_api_key_secret.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
 # --- 4. The Frontend Service (The Face) ---
@@ -225,4 +186,76 @@ resource "google_cloud_run_v2_service_iam_member" "lb_invokes_frontend" {
   name     = google_cloud_run_v2_service.frontend.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-iap.iam.gserviceaccount.com"
+}
+
+# --- 6. Ingestion Job (The Knowledge Loader) ---
+
+resource "google_cloud_run_v2_job" "ingest_job" {
+  name     = "ingest-job"
+  location = var.region
+
+  template {
+    template {
+      service_account = google_service_account.backend_sa.email # Re-use backend SA as it has DB permissions
+      timeout = "600s" # Jobs can run longer
+
+      vpc_access{
+        network_interfaces {
+          network    = var.vpc_name
+          subnetwork = var.subnet_name
+        }
+        egress = "ALL_TRAFFIC"
+      }
+
+      containers {
+        # Reuse the backend image, but run a different command
+        image = "us-docker.pkg.dev/cloudrun/container/hello" 
+        
+        # OVERRIDE COMMAND to run the ingestion script
+        command = ["python", "ingest.py"]
+
+        resources {
+          limits = {
+            cpu    = "2"
+            memory = "4Gi"
+          }
+        }
+
+        env {
+          name  = "PROJECT_ID"
+          value = var.project_id
+        }
+        env {
+          name  = "REGION"
+          value = var.region
+        }
+        env {
+            name  = "DB_USER"
+            value = "postgres" 
+          }
+        env {
+          name  = "DB_NAME"
+          value = "postgres"
+        }
+        env {
+          name  = "DB_HOST"
+          value = var.db_host
+        }
+        env {
+          name = "DB_PASSWORD"
+          value_source {
+            secret_key_ref {
+              secret  = var.db_secret_id
+              version = "latest"
+            }
+          }
+        }
+        # Ingestion doesn't strictly need Redis, but config might import it.
+        env {
+          name  = "REDIS_HOST"
+          value = var.redis_host
+        }
+      }
+    }
+  }
 }

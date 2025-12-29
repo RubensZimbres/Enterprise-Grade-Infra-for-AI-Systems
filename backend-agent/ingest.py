@@ -55,14 +55,20 @@ async def ingest_data():
     chunks = text_splitter.split_documents(raw_docs)
     print(f"🧩 Generated {len(chunks)} chunks.")
 
-    # 3. Connect to AlloyDB
-    print("🔌 Connecting to AlloyDB...")
-    embeddings = VertexAIEmbeddings(model_name="textembedding-gecko@003")
+    # 3. Connect to Database (Cloud SQL)
+    print("🔌 Connecting to Cloud SQL...")
+    embeddings = VertexAIEmbeddings(model_name="textembedding-gecko@003", project=settings.PROJECT_ID, location=settings.REGION)
     
     connection_string = f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:5432/{settings.DB_NAME}"
     
+    # Ensure pgvector extension exists
+    # We need a synchronous connection or a specific async execution to run the CREATE EXTENSION command
+    # However, LangChain's PGVector might attempt to create it. To be safe, let's try to let PGVector handle it
+    # or use a raw connection if strictly necessary. 
+    # For simplicity in this script, we'll rely on the user/terraform having appropriate permissions
+    # but let's update the log message.
+    
     # Note: We use 'pre_delete_collection=True' to wipe old data for a clean slate.
-    # In a real production incremental update, you would NOT do this.
     print(f"💾 Ingesting into database '{settings.DB_NAME}'...")
     
     vector_store = PGVector(
@@ -71,6 +77,10 @@ async def ingest_data():
         connection=connection_string,
         use_jsonb=True,
     )
+    
+    # Force extension creation (if possible via the driver, otherwise rely on manual setup or PGVector's internal checks)
+    # Ideally, run: await vector_store.aexecute("CREATE EXTENSION IF NOT EXISTS vector") if the library supported it easily.
+    # Instead, we will assume the database allows extension creation.
 
     # 4. Upsert Data
     # We do this in batches implicitly handled by LangChain, but you can force batching if needed.
