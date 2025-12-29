@@ -137,8 +137,7 @@ The backend no longer uses a `.env` file. You must export these variables in you
 ### 2. Running the Backend Locally
 
 ```bash
-cd backend-agent
-pip install -r requirements.txt
+cd backend-agent && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt                                                                                         │
 # Export your variables
 export PROJECT_ID="your-project"
 export REGION="us-central1"
