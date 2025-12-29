@@ -1,4 +1,4 @@
-# Enterprise AI Platform: RAG with Guardrails in Google Cloud Deployed via Terraform
+# From PoC to Production: Enterprise AI Platform with RAG and Guardrails in Google Cloud Deployed via Terraform
 
 This repository contains a full-stack, secure AI platform deployed on Google Cloud. It enables private, internal document chat with enterprise-grade security and automated PII protection, deployed via Terraform and Cloud Build.
 
