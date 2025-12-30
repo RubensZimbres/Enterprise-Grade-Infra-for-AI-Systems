@@ -84,3 +84,18 @@ module "function" {
   db_password_secret_id = module.database.secret_id
   depends_on            = [module.database, module.storage]
 }
+
+# Secrets for Stripe
+resource "google_secret_manager_secret" "stripe_publishable_key" {
+  secret_id = "STRIPE_PUBLISHABLE_KEY"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret" "stripe_secret_key" {
+  secret_id = "STRIPE_SECRET_KEY"
+  replication {
+    auto {}
+  }
+}
