@@ -51,12 +51,19 @@ resource "google_sql_database_instance" "postgres" {
     }
 
     backup_configuration {
-      enabled    = true
-      start_time = "02:00"
+      enabled                        = true
+      start_time                     = "02:00"
+      binary_log_enabled             = true # Required for PITR
+      point_in_time_recovery_enabled = true
+
+      backup_retention_settings {
+        retained_backups = 7
+        retention_unit   = "COUNT"
+      }
     }
   }
 
-  deletion_protection = false # Set to true for production
+  deletion_protection = true # Enabled for DR safety
 }
 
 resource "google_sql_user" "users" {
@@ -76,4 +83,15 @@ resource "google_firestore_database" "firestore" {
   concurrency_mode = "OPTIMISTIC"
 
   delete_protection_state = "DELETE_PROTECTION_DISABLED"
+}
+
+# --- 5. Firestore Backup Schedule ---
+
+resource "google_firestore_backup_schedule" "daily_backup" {
+  project  = var.project_id
+  database = google_firestore_database.firestore.name
+
+  retention = "604800s" # 7 days in seconds
+
+  daily_recurrence {}
 }

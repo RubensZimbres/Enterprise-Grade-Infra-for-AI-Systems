@@ -568,5 +568,75 @@ To deploy this platform securely, you must configure the following secrets in **
 > **Note on Authentication:** The frontend uses Firebase. For local backend testing, you can use the `Bearer MOCK_TOKEN` header if `DEBUG=true` is set on the backend.
 > **Note:** Frontend configuration variables (e.g., `NEXT_PUBLIC_FIREBASE_API_KEY`, `BACKEND_URL`) are not strictly "secrets" but should be managed via Cloud Run Environment Variables or build args.
 
+# Disaster Recovery Plan
+
+This document outlines the procedures for recovering the platform's critical data stores: **Cloud SQL** (PostgreSQL) and **Firestore**.
+
+## 1. Cloud SQL (PostgreSQL) Recovery
+
+Our Cloud SQL instance is configured with:
+- **Automated Backups:** Retained for 7 days.
+- **Point-in-Time Recovery (PITR):** Allows restoration to any second within the retention window.
+- **Deletion Protection:** Prevents accidental deletion of the instance.
+
+### Scenario A: Accidental Data Corruption (PITR)
+*Objective: Restore the database to a state before the corruption occurred (e.g., 10 minutes ago).*
+
+1.  **Identify the Timestamp:** Determine the exact UTC time just before the error occurred.
+2.  **Perform Restore (Clone):** Cloud SQL restores are performed by creating a *new* instance from the backup.
+    ```bash
+    # Example: Restore to a new instance named 'restored-db-instance'
+    gcloud sql instances clone <SOURCE_INSTANCE_ID> restored-db-instance \
+        --point-in-time "2023-10-27T13:00:00Z"
+    ```
+3.  **Verify Data:** Connect to `restored-db-instance` and verify the data integrity.
+4.  **Switch Traffic:** Update the application secrets to point to the new instance IP/Host, or promote the new instance to be the primary if using a proxy.
+
+### Scenario B: Full Instance Loss (Backup Restore)
+*Objective: Restore from the last successful nightly backup.*
+
+1.  **List Backups:**
+    ```bash
+    gcloud sql backups list --instance=<INSTANCE_ID>
+    ```
+2.  **Restore:**
+    ```bash
+    gcloud sql backups restore <BACKUP_ID> --restore-instance=<TARGET_INSTANCE_ID>
+    ```
+
+---
+
+## 2. Firestore Recovery
+
+Our Firestore database is configured with a **Daily Backup Schedule** retained for 7 days.
+
+### Restore Procedure
+
+1.  **List Available Backups:**
+    ```bash
+    gcloud firestore backups list --location=<REGION>
+    ```
+    *Note the `resource name` of the backup you wish to restore.*
+
+2.  **Restore to a New Database:**
+    Firestore does not support in-place restores. You must restore to a new database ID.
+
+    ```bash
+    gcloud firestore databases restore \
+        --source-backup=projects/<PROJECT_ID>/locations/<REGION>/backups/<BACKUP_ID> \
+        --destination-database=restored-firestore-db
+    ```
+
+3.  **Update Application:**
+    Update the backend configuration `FIRESTORE_DATABASE_ID` or similar config) to point to `restored-firestore-db`.
+
+---
+
+## 3. Post-Recovery Checklist
+
+- [ ] **Verify Connectivity:** Ensure backend services can connect to the restored databases.
+- [ ] **Data Integrity Check:** Run application-level smoke tests.
+- [ ] **Re-enable Backups:** Ensure the new/restored instances have backup schedules re-applied (Terraform apply might be needed).
+
 **Acknowledgements**
 ✨ Google ML Developer Programs and Google Developers Program supported this work by providing Google Cloud Credits (and awesome tutorials for the Google Developer Experts)✨
