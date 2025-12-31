@@ -7,3 +7,4 @@ langchain-postgres
 asyncpg
 pgvector
 pypdf
+google-cloud-secret-manager

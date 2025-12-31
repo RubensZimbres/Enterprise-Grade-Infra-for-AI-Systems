@@ -56,8 +56,6 @@ module "ingress" {
   region                = var.region
   frontend_service_name = module.compute.frontend_name
   domain_name           = var.domain_name
-  iap_client_id         = var.iap_client_id
-  iap_client_secret     = var.iap_client_secret
   depends_on            = [module.compute]
 }
 
@@ -85,4 +83,32 @@ module "function" {
   db_user               = "postgres" # Default
   db_password_secret_id = module.database.secret_id
   depends_on            = [module.database, module.storage]
+}
+
+# Secrets for Stripe
+resource "google_secret_manager_secret" "stripe_publishable_key" {
+  secret_id = "STRIPE_PUBLISHABLE_KEY"
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret" "stripe_secret_key" {
+  secret_id = "STRIPE_SECRET_KEY"
+  replication {
+    auto {}
+  }
+}
+
+# Allow Frontend to access Stripe Secrets ONLY
+resource "google_secret_manager_secret_iam_member" "frontend_stripe_publishable_key_access" {
+  secret_id = google_secret_manager_secret.stripe_publishable_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.compute.frontend_sa_email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "frontend_stripe_secret_key_access" {
+  secret_id = google_secret_manager_secret.stripe_secret_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.compute.frontend_sa_email}"
 }

@@ -212,7 +212,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-
+docker-compose.yaml
 # Node.js
 frontend-nextjs/node_modules
 frontend-nextjs/.next

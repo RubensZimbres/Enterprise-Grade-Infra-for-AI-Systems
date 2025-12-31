@@ -5,15 +5,30 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_postgres import PGVector
 from google.cloud import storage
+from google.cloud import secretmanager
 import asyncio
+from urllib.parse import quote_plus
 
-# Config from Env Vars
+# Helper
+def get_secret(project_id: str, secret_id: str, version_id: str = "1") -> str:
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+        name = f"projects/{project_id}/secrets/{secret_id}/versions/{version_id}"
+        response = client.access_secret_version(request={"name": name})
+        return response.payload.data.decode('UTF-8')
+    except Exception as e:
+        print(f"Warning: Could not fetch secret {secret_id}: {e}")
+        return ""
+
+# Bootstrapping Variable
 PROJECT_ID = os.getenv("PROJECT_ID")
-REGION = os.getenv("REGION")
-DB_HOST = os.getenv("DB_HOST")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME", "postgres")
+
+# Load Config & Secrets from Secret Manager
+REGION = get_secret(PROJECT_ID, "REGION") if PROJECT_ID else os.getenv("REGION")
+DB_HOST = get_secret(PROJECT_ID, "DB_HOST") if PROJECT_ID else os.getenv("DB_HOST")
+DB_USER = get_secret(PROJECT_ID, "DB_USER") if PROJECT_ID else os.getenv("DB_USER", "postgres")
+DB_NAME = get_secret(PROJECT_ID, "DB_NAME") if PROJECT_ID else os.getenv("DB_NAME", "postgres")
+DB_PASSWORD = get_secret(PROJECT_ID, "DB_PASSWORD") if PROJECT_ID else os.getenv("DB_PASSWORD")
 
 # Constants
 CHUNK_SIZE = 1000
@@ -53,7 +68,7 @@ async def process_document(local_path):
 
     # 3. Vector Store
     # Connection string
-    connection_string = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}"
+    connection_string = f"postgresql+asyncpg://{quote_plus(DB_USER)}:{quote_plus(DB_PASSWORD)}@{DB_HOST}:5432/{DB_NAME}"
     
     vector_store = PGVector(
         embeddings=get_embeddings(),

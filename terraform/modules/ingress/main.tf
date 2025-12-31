@@ -165,11 +165,7 @@ resource "google_compute_backend_service" "default" {
     }
   }
 
-  # --- IAP CONFIGURATION ---
-  iap {
-    oauth2_client_id     = var.iap_client_id
-    oauth2_client_secret = var.iap_client_secret
-  }
+  # IAP Block Removed
 
   backend {
     group = google_compute_region_network_endpoint_group.serverless_neg.id

@@ -14,17 +14,6 @@ variable "domain_name" {
   type        = string
 }
 
-variable "iap_client_id" {
-  description = "OAuth2 Client ID for IAP"
-  type        = string
-}
-
-variable "iap_client_secret" {
-  description = "OAuth2 Client Secret for IAP"
-  type        = string
-  sensitive   = true
-}
-
 variable "billing_account" {
   description = "The billing account ID"
   type        = string

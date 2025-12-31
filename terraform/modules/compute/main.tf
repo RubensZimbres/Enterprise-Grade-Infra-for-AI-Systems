@@ -5,12 +5,12 @@ data "google_project" "project" {}
 # --- 1. Identity: Service Accounts (The ID Cards) ---
 
 resource "google_service_account" "frontend_sa" {
-  account_id   = "ai-frontend-sa" # REMOVED: "${var.project_id}-"
+  account_id   = "ai-frontend-sa" 
   display_name = "Frontend Agent Service Account"
 }
 
 resource "google_service_account" "backend_sa" {
-  account_id   = "ai-backend-sa" # REMOVED: "${var.project_id}-"
+  account_id   = "ai-backend-sa" 
   display_name = "Backend Agent Service Account"
 }
 
@@ -18,7 +18,7 @@ resource "google_service_account" "backend_sa" {
 
 # Allow Backend to read the DB Password from Secret Manager
 resource "google_secret_manager_secret_iam_member" "backend_secret_access" {
-  secret_id = var.db_secret_id # Passed from Database module
+  secret_id = var.db_secret_id 
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.backend_sa.email}"
 }
@@ -51,36 +51,62 @@ resource "google_project_iam_member" "backend_firestore_user" {
   member  = "serviceAccount:${google_service_account.backend_sa.email}"
 }
 
+# Allow Backend to use DLP (PII Masking)
+resource "google_project_iam_member" "backend_dlp_user" {
+  project = var.project_id
+  role    = "roles/dlp.user"
+  member  = "serviceAccount:${google_service_account.backend_sa.email}"
+}
+
 # --- 3. The Backend Service (The Brain) ---
 
 resource "google_cloud_run_v2_service" "backend" {
   name     = "backend-agent"
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY" # Locked down. Only reachable via VPC/Internal.
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_ONLY" 
 
   template {
     service_account = google_service_account.backend_sa.email
     timeout         = "300s"
     
-    # SCALABILITY: Define autoscaling limits
     scaling {
       min_instance_count = 1 
       max_instance_count = 20 
     }
 
-    # DIRECT VPC EGRESS: Connects container to the Private Subnet
     vpc_access{
       network_interfaces {
         network    = var.vpc_name
         subnetwork = var.subnet_name
       }
-      # Route all traffic through VPC (so it uses Cloud NAT for internet)
       egress = "ALL_TRAFFIC" 
     }
 
     containers {
-      # Placeholder image. You MUST replace this with your actual Artifact Registry image later.
       image = "us-docker.pkg.dev/cloudrun/container/hello" 
+
+      # ADDED: Auto-healing configuration
+      startup_probe {
+        initial_delay_seconds = 10
+        timeout_seconds       = 3
+        period_seconds        = 10
+        failure_threshold     = 3
+        http_get {
+          path = "/health"
+          port = 8080
+        }
+      }
+
+      liveness_probe {
+        initial_delay_seconds = 30 # Give startup probe time to finish
+        timeout_seconds       = 3
+        period_seconds        = 15
+        failure_threshold     = 3
+        http_get {
+          path = "/health"
+          port = 8080
+        }
+      }
 
       resources {
         limits = {
@@ -103,7 +129,7 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       env {
         name  = "DB_NAME"
-        value = "postgres" # Reverted to default DB to ensure connection success
+        value = "postgres" 
       }
       env {
         name  = "DB_HOST"
@@ -131,19 +157,17 @@ resource "google_cloud_run_v2_service" "backend" {
 resource "google_cloud_run_v2_service" "frontend" {
   name     = "frontend-agent"
   location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL" # Accepts traffic from ALB (or public for now)
+  ingress  = "INGRESS_TRAFFIC_ALL" 
 
   template {
     service_account = google_service_account.frontend_sa.email
     timeout         = "300s"
     
-    # SCALABILITY: Define autoscaling limits
     scaling {
       min_instance_count = 1 
       max_instance_count = 20 
     }
 
-    # Frontend also needs VPC access if it needs to talk to the Backend via internal DNS
     vpc_access{
       network_interfaces {
         network    = var.vpc_name
@@ -153,7 +177,6 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
 
     containers {
-      # Placeholder image. You MUST replace this with your actual Artifact Registry image later.
       image = "us-docker.pkg.dev/cloudrun/container/hello"
       
       resources {
@@ -180,15 +203,17 @@ resource "google_cloud_run_v2_service_iam_member" "frontend_invokes_backend" {
   member   = "serviceAccount:${google_service_account.frontend_sa.email}"
 }
 
-# Allow IAP Service Agent to invoke Frontend (Used by Load Balancer)
-resource "google_cloud_run_v2_service_iam_member" "lb_invokes_frontend" {
+# --- 6. Security: Allow Public Access to Frontend (No IAP) ---
+
+# Allow unauthenticated users (public internet) to invoke the Frontend
+resource "google_cloud_run_v2_service_iam_member" "public_invokes_frontend" {
   location = google_cloud_run_v2_service.frontend.location
   name     = google_cloud_run_v2_service.frontend.name
   role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-iap.iam.gserviceaccount.com"
+  member   = "allUsers"
 }
 
-# --- 6. Ingestion Job (The Knowledge Loader) ---
+# --- 7. Ingestion Job (The Knowledge Loader) ---
 
 resource "google_cloud_run_v2_job" "ingest_job" {
   name     = "ingest-job"
@@ -196,8 +221,8 @@ resource "google_cloud_run_v2_job" "ingest_job" {
 
   template {
     template {
-      service_account = google_service_account.backend_sa.email # Re-use backend SA as it has DB permissions
-      timeout = "600s" # Jobs can run longer
+      service_account = google_service_account.backend_sa.email 
+      timeout = "600s" 
 
       vpc_access{
         network_interfaces {
@@ -208,10 +233,8 @@ resource "google_cloud_run_v2_job" "ingest_job" {
       }
 
       containers {
-        # Reuse the backend image, but run a different command
         image = "us-docker.pkg.dev/cloudrun/container/hello" 
         
-        # OVERRIDE COMMAND to run the ingestion script
         command = ["python", "ingest.py"]
 
         resources {
@@ -250,7 +273,6 @@ resource "google_cloud_run_v2_job" "ingest_job" {
             }
           }
         }
-        # Ingestion doesn't strictly need Redis, but config might import it.
         env {
           name  = "REDIS_HOST"
           value = var.redis_host
@@ -259,3 +281,8 @@ resource "google_cloud_run_v2_job" "ingest_job" {
     }
   }
 }
+
+# --- 8. Security: Allow Frontend to Access Secrets ---
+
+# REMOVED: Excessive permission (roles/secretmanager.secretAccessor on Project)
+# The frontend now has scoped access to specific secrets (Stripe) defined in the root main.tf

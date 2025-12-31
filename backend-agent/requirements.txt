@@ -20,3 +20,9 @@ opentelemetry-sdk
 opentelemetry-exporter-gcp-trace
 opentelemetry-instrumentation-fastapi
 opentelemetry-instrumentation-requests
+firebase-admin
+tenacity
+opentelemetry-instrumentation-langchain
+stripe
+sqlalchemy
+google-cloud-secret-manager
