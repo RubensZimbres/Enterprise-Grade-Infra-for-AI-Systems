@@ -25,3 +25,13 @@ variable "notification_email" {
   type        = string
   default     = "user@gmail.com"
 }
+
+variable "github_owner" {
+  description = "The GitHub repository owner"
+  type        = string
+}
+
+variable "github_repo_name" {
+  description = "The GitHub repository name"
+  type        = string
+}

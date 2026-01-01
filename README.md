@@ -67,6 +67,12 @@ The Backend Agent is designed as a stateful, retrieval-augmented system that bal
     *   **Separators:** Prioritizes splitting by double newlines (paragraphs), then single newlines, then spaces.
 *   **Document Support:** Includes a `DirectoryLoader` with `PyPDFLoader` to automatically parse and index complex PDF structures.
 
+### 4. Cache Implementation
+
+*   **Cost Savings:** You pay for the system instruction tokens once per hour (cache creation) instead of every single request.
+*   **Latency:** The model doesn't need to re-process the large system prompt for every user query, leading to faster Time to First Token (TTFT).
+*   **Implicit vs. Explicit:** I relied on Implicit Caching for the short-term chat history (managed automatically by Gemini) and implemented Explicit Caching for the static, heavy system prompt.
+
 ## Security & Resilience: A Multi-Layered Defense
 This platform implements a robust, multi-layered security strategy. The codebase and infrastructure have been hardened against the following threats:
 
@@ -105,9 +111,10 @@ This platform has been upgraded for production-scale performance, cost efficienc
 *   **Asynchronous Thread Pooling:** Expensive operations like PII de-identification via Google Cloud DLP are offloaded to asynchronous background threads, preventing them from blocking the main request-response cycle.
 
 ### 3. Cost Control & Efficiency
-*   **Gemini 3 Flash Integration:** Utilizes the high-efficiency Flash model (`gemini-3-flash-preview`) for a 10x reduction in token costs and significantly lower latency compared to larger models.
-*   **DLP Fast-Path Guardrails:** Implemented a high-performance regex-based "pre-check" for PII. This intelligently bypasses expensive Google Cloud DLP API calls for clean content, invoking the API only when potential PII patterns are detected.
-*   **Global CDN Caching:** Google Cloud CDN is enabled at the Load Balancer level to cache static assets and common frontend resources globally, reducing origin server load and improving page load times.
+-   **Gemini 3 Flash Integration:** Utilizes the high-efficiency Flash model (`gemini-3-flash-preview`) for a 10x reduction in token costs and significantly lower latency compared to larger models.
+-   **DLP Fast-Path Guardrails:** Implemented a high-performance regex-based "pre-check" for PII. This intelligently bypasses expensive Google Cloud DLP API calls for clean content, invoking the API only when potential PII patterns are detected.
+-   **Global CDN Caching:** Google Cloud CDN is enabled at the Load Balancer level to cache static assets and common frontend resources globally, reducing origin server load and improving page load times.
+-   **Smart Storage Versioning:** Implemented Object Lifecycle Management on Cloud Storage buckets. Files are automatically transitioned to **Nearline** storage after 7 days, **Archive** storage after 30 days, and **deleted** after 90 days. This ensures disaster recovery capabilities (versioning is enabled) without indefinite storage costs.
 
 ## Performance & Scaling Roadmap
 The current infrastructure is designed for high efficiency and is benchmarked to handle approximately 2,500 users per hour with the standard provisioned resources.
@@ -131,12 +138,6 @@ Use a specialized engine designed for high-throughput vector search.
 
 ![AWS Architecture](images/AWS_Architecture.jpg)
 *Figure 2: Correspondent AWS Architecture*
-
-The platform is composed of three main layers:
-
-1.  **Frontend (UI):** A modern, high-concurrency **Next.js** application providing a real-time streaming chat interface. Accessible publicly via Global Load Balancer, secured by Firebase Authentication.
-2.  **Backend Agent (Neural Core):** An asynchronous **FastAPI** service orchestrating the RAG pipeline, secured by internal-only networking and Firebase Token verification.
-3.  **Infrastructure (Terraform):** Fully automated deployment using "Infrastructure as Code."
 
 ---
 
@@ -162,6 +163,9 @@ The following table details the Zero-Trust permission model enforced by the infr
 | Backend SA | Firestore | `roles/datastore.user` | ✅ Present |
 | Backend SA | Cloud DLP | `roles/dlp.user` | ✅ Present |
 | Function SA | Storage | `roles/storage.objectViewer` | ✅ Present |
+| Cloud Build SA | CI/CD | `roles/run.admin` | ✅ Present |
+| Cloud Build SA | CI/CD | `roles/iam.serviceAccountAdmin` | ✅ Present |
+| Cloud Build SA | CI/CD | `roles/artifactregistry.writer` | ✅ Present |
 
 ---
 
@@ -173,30 +177,7 @@ This section guides you through running the entire stack (Database, Backend, Fro
 
 Instead of connecting to remote Cloud SQL instances (which is slow and insecure for local dev), we will use Docker to spin up a local **PostgreSQL with pgvector** and **Redis**.
 
-1.  Create a file named `docker-compose.yaml` in the root directory:
-
-    ```yaml
-    version: '3.8'
-    services:
-      postgres:
-        image: ankane/pgvector:v0.5.1 # Postgres 15 with pgvector pre-installed
-        ports:
-          - "5432:5432"
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: postgres
-        volumes:
-          - postgres_data:/var/lib/postgresql/data
-
-      redis:
-        image: redis:alpine
-        ports:
-          - "6379:6379"
-
-    volumes:
-      postgres_data:
-    ```
+1.  Get the file named `docker-compose.yaml` in the root directory:
 
 2.  **Start the Services:**
     Open your terminal in the project root and run:
@@ -338,6 +319,22 @@ Copy the webhook signing secret output by this command into your backend `.env` 
 
 ---
 
+## CI/CD Implementation
+This section covers the automated CI/CD pipeline using Cloud Build triggers connected to GitHub.
+
+### Overview
+The CI/CD infrastructure automates the build and deployment process whenever changes are pushed to the repository. It consists of:
+
+**Artifact Registry:** A Docker repository (cloud-run-source-deploy) for storing container images.
+**Cloud Build Triggers:** Automated triggers that watch specific paths in the repository and execute the corresponding build configurations.
+
+### Steps
+**1. Connect Repository:** Ensure you have installed the "Cloud Build" GitHub App on your repository and connected it to your Google Cloud project.
+**2. Update `terraform.tfvars`:** You will need to add values for the new variables in your terraform.tfvars file (or pass them via command line):
+
+     github_owner     = "your-username"
+     github_repo_name = "your-repo-name"
+
 ## What To Do: A Deployment Guide for the AI Platform
 
 Essential `gcloud` commands and manual steps required to successfully deploy the AI platform.
@@ -421,27 +418,6 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
   --member="serviceAccount:ai-backend-sa@$(gcloud config get-value project).iam.gserviceaccount.com" \
   --role="roles/dlp.user"
 ```
-
-### 1.6. Configure Firebase Project (Manual UI Step)
-
-Authentication is now handled by Firebase. This is a **manual, one-time setup**.
-
-1.  **Go to Firebase Console:**
-    *   Navigate to [console.firebase.google.com](https://console.firebase.google.com).
-    *   Add a new project or select your existing Google Cloud project.
-2.  **Enable Authentication:**
-    *   Go to **Build -> Authentication**.
-    *   Click **Get Started**.
-    *   Go to **Sign-in method** tab.
-    *   Enable **Email/Password**.
-    *   Enable **Google**.
-    *   Enable **Microsoft** (for Hotmail/Outlook users).
-3.  **Register Web App:**
-    *   Click the **Gear icon** (Project settings).
-    *   Scroll to **Your apps**.
-    *   Click the **</> (Web)** icon to register your app.
-    *   Copy the `firebaseConfig` keys. You will need these for your local environment (`.env.local`) and your CI/CD pipeline.
-
 ---
 
 ## Phase 2: Post-Terraform Actions & Verification
@@ -542,6 +518,76 @@ To deploy this platform securely, you must configure the following secrets in **
 
 > **Note on Authentication:** The frontend uses Firebase. For local backend testing, you can use the `Bearer MOCK_TOKEN` header if `DEBUG=true` is set on the backend.
 > **Note:** Frontend configuration variables (e.g., `NEXT_PUBLIC_FIREBASE_API_KEY`, `BACKEND_URL`) are not strictly "secrets" but should be managed via Cloud Run Environment Variables or build args.
+
+# Disaster Recovery Plan
+
+This document outlines the procedures for recovering the platform's critical data stores: **Cloud SQL** (PostgreSQL) and **Firestore**.
+
+## 1. Cloud SQL (PostgreSQL) Recovery
+
+Our Cloud SQL instance is configured with:
+- **Automated Backups:** Retained for 7 days.
+- **Point-in-Time Recovery (PITR):** Allows restoration to any second within the retention window.
+- **Deletion Protection:** Prevents accidental deletion of the instance.
+
+### Scenario A: Accidental Data Corruption (PITR)
+*Objective: Restore the database to a state before the corruption occurred (e.g., 10 minutes ago).*
+
+1.  **Identify the Timestamp:** Determine the exact UTC time just before the error occurred.
+2.  **Perform Restore (Clone):** Cloud SQL restores are performed by creating a *new* instance from the backup.
+    ```bash
+    # Example: Restore to a new instance named 'restored-db-instance'
+    gcloud sql instances clone <SOURCE_INSTANCE_ID> restored-db-instance \
+        --point-in-time "2023-10-27T13:00:00Z"
+    ```
+3.  **Verify Data:** Connect to `restored-db-instance` and verify the data integrity.
+4.  **Switch Traffic:** Update the application secrets to point to the new instance IP/Host, or promote the new instance to be the primary if using a proxy.
+
+### Scenario B: Full Instance Loss (Backup Restore)
+*Objective: Restore from the last successful nightly backup.*
+
+1.  **List Backups:**
+    ```bash
+    gcloud sql backups list --instance=<INSTANCE_ID>
+    ```
+2.  **Restore:**
+    ```bash
+    gcloud sql backups restore <BACKUP_ID> --restore-instance=<TARGET_INSTANCE_ID>
+    ```
+
+---
+
+## 2. Firestore Recovery
+
+Our Firestore database is configured with a **Daily Backup Schedule** retained for 7 days.
+
+### Restore Procedure
+
+1.  **List Available Backups:**
+    ```bash
+    gcloud firestore backups list --location=<REGION>
+    ```
+    *Note the `resource name` of the backup you wish to restore.*
+
+2.  **Restore to a New Database:**
+    Firestore does not support in-place restores. You must restore to a new database ID.
+
+    ```bash
+    gcloud firestore databases restore \
+        --source-backup=projects/<PROJECT_ID>/locations/<REGION>/backups/<BACKUP_ID> \
+        --destination-database=restored-firestore-db
+    ```
+
+3.  **Update Application:**
+    Update the backend configuration `FIRESTORE_DATABASE_ID` or similar config) to point to `restored-firestore-db`.
+
+---
+
+## 3. Post-Recovery Checklist
+
+- [ ] **Verify Connectivity:** Ensure backend services can connect to the restored databases.
+- [ ] **Data Integrity Check:** Run application-level smoke tests.
+- [ ] **Re-enable Backups:** Ensure the new/restored instances have backup schedules re-applied (Terraform apply might be needed).
 
 **Acknowledgements**
 ✨ Google ML Developer Programs and Google Developers Program supported this work by providing Google Cloud Credits (and awesome tutorials for the Google Developer Experts)✨

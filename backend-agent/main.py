@@ -49,7 +49,17 @@ tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
 trace.set_tracer_provider(tracer_provider)
 
 # Initialize Limiter
-limiter = Limiter(key_func=get_remote_address)
+def get_real_ip(request: Request):
+    """
+    Extracts the real client IP from X-Forwarded-For header.
+    Falls back to remote address if header is missing.
+    """
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=get_real_ip)
 app = FastAPI(title="Enterprise AI Agent", version="1.0.0")
 
 # Instrument FastAPI
@@ -57,12 +67,13 @@ FastAPIInstrumentor.instrument_app(app)
 LangChainInstrumentor().instrument()
 
 # Add CORS Middleware
+origins = ["http://localhost:3000"]
+if settings.FRONTEND_URL:
+    origins.append(settings.FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://CHANGE_ME_TO_YOUR_DOMAIN.com"
-    ], # RESTRICTED: Match your frontend domain
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

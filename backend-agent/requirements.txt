@@ -25,4 +25,4 @@ tenacity
 opentelemetry-instrumentation-langchain
 stripe
 sqlalchemy
-google-cloud-secret-manager
+google-cloud-secret-managergoogle-genai

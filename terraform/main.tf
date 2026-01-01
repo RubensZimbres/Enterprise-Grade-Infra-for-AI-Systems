@@ -107,8 +107,31 @@ resource "google_secret_manager_secret_iam_member" "frontend_stripe_publishable_
   member    = "serviceAccount:${module.compute.frontend_sa_email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "frontend_stripe_secret_key_access" {
-  secret_id = google_secret_manager_secret.stripe_secret_key.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${module.compute.frontend_sa_email}"
+# Redis Password Secret
+resource "google_secret_manager_secret" "redis_password" {
+  secret_id = "REDIS_PASSWORD"
+  replication {
+    auto {}
+  }
 }
+
+resource "google_secret_manager_secret_version" "redis_password_version" {
+  secret      = google_secret_manager_secret.redis_password.id
+  secret_data = module.redis.auth_string
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_redis_password_access" {
+  secret_id = google_secret_manager_secret.redis_password.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.compute.backend_sa_email}"
+}
+
+module "cicd" {
+  source = "./modules/cicd"
+
+  project_id       = var.project_id
+  region           = var.region
+  github_owner     = var.github_owner
+  github_repo_name = var.github_repo_name
+}
+
