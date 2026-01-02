@@ -34,6 +34,33 @@ from slowapi.errors import RateLimitExceeded
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Request Logging Middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    import time
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+    formatted_process_time = "{0:.2f}".format(process_time)
+    logger.info(f"path={request.url.path} method={request.method} status={response.status_code} duration={formatted_process_time}ms")
+    return response
+
+# Startup Event: Connectivity Check
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Starting up Backend Agent...")
+    try:
+        # Check Database Connectivity
+        with engine.connect() as connection:
+            from sqlalchemy import text
+            connection.execute(text("SELECT 1"))
+        logger.info("✅ Database connection successful.")
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
+    
+    # Check Settings (Redacted)
+    logger.info(f"Config: DB_HOST={settings.DB_HOST}, REDIS_HOST={settings.REDIS_HOST}")
+
 # Initialize DB
 models.Base.metadata.create_all(bind=engine)
 
@@ -130,7 +157,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None),
         
         if customer_email:
             crud.update_user_subscription(db, customer_email, 'active', customer_id)
-            logger.info(f"Renewed subscription for {customer_email}")
+            logger.info(f"Renewed subscription for customer_id: {customer_id}")
             
     elif event['type'] == 'customer.subscription.deleted':
         subscription = event['data']['object']

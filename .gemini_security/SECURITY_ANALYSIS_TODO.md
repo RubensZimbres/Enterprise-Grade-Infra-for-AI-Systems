@@ -1,0 +1,14 @@
+- [x] Define the audit scope.
+- [x] SAST Recon on `terraform/terraform.tfvars` (File ignored by git, skipped).
+- [x] SAST Recon on `frontend-nextjs/lib/secrets.ts` (File ignored by git, skipped).
+- [x] SAST Recon on `backend-agent/config.py`.
+- [x] SAST Recon on `frontend-nextjs/.env.local`.
+- [x] SAST Recon on `cloudbuild-backend.yaml`.
+- [x] SAST Recon on `cloudbuild-frontend.yaml`.
+- [x] SAST Recon on `backend-agent/main.py`.
+- [x] SAST Recon on `functions/pdf-ingest/main.py`.
+- [ ] SAST Recon on `frontend-nextjs/app/api/chat/route.ts`.
+- [ ] SAST Recon on `frontend-nextjs/lib/firebase.ts`.
+- [ ] SAST Recon on `frontend-nextjs/lib/stripe.ts`.
+- [ ] SAST Recon on `backend-agent/database.py`.
+- [ ] Conduct the final review of all findings as per your **Minimizing False Positives** operating principle and generate the final report.

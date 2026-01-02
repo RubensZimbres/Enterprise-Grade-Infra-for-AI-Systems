@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const firebaseToken = userAuthToken.replace('Bearer ', '');
 
-    console.log(`Forwarding request to: ${backendUrl}/stream`);
+    console.log(`[Proxy] Forwarding request to: ${backendUrl}/stream`);
 
     // Get Service-to-Service OIDC auth headers
     let serviceAuthHeaders = {};
@@ -84,9 +84,9 @@ export async function POST(req: NextRequest) {
       try {
         const client = await auth.getIdTokenClient(backendUrl);
         serviceAuthHeaders = await client.getRequestHeaders();
-        console.log('Generated Service-to-Service OIDC token');
+        console.log('[Proxy] Generated Service-to-Service OIDC token');
       } catch (err) {
-        console.error('Failed to get service-to-service ID token:', err);
+        console.error('[Proxy] Failed to get service-to-service ID token:', err);
       }
     }
 
@@ -102,8 +102,12 @@ export async function POST(req: NextRequest) {
 
     // --- Execute with Circuit Breaker ---
     try {
+        const startTime = Date.now();
         const response = await breaker.fire(`${backendUrl}/stream`, fetchOptions);
+        const duration = Date.now() - startTime;
         
+        console.log(`[Proxy] Backend responded: Status=${response.status} Duration=${duration}ms`);
+
         // If fallback triggered (Response object from fallback), return it
         if (response.status === 503 && !response.body) { 
              // Opossum fallback might return a Response-like object depending on implementation
