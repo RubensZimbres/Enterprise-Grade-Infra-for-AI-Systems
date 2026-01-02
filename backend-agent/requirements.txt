@@ -26,3 +26,4 @@ opentelemetry-instrumentation-langchain
 stripe
 sqlalchemy
 google-cloud-secret-managergoogle-genai
+tiktoken

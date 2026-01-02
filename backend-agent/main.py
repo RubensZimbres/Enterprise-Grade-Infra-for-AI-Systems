@@ -1,5 +1,6 @@
 import logging
 import stripe
+import tiktoken
 from fastapi import FastAPI, HTTPException, Depends, Request, Header
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -118,12 +119,19 @@ class ChatResponse(BaseModel):
 
 def validate_token_count(text: str, limit: int = 2000):
     """
-    Validates that the message token count is within limits.
-    Uses a rough approximation (4 chars = 1 token) to avoid heavy dependencies like tiktoken.
+    Validates that the message token count is within limits using tiktoken.
     """
-    estimated_tokens = len(text) / 4
-    if estimated_tokens > limit:
-        raise HTTPException(status_code=400, detail=f"Message too long. Estimated tokens: {int(estimated_tokens)}, Limit: {limit}")
+    try:
+        encoding = tiktoken.get_encoding("cl100k_base") # Standard encoding for GPT-4/3.5
+        num_tokens = len(encoding.encode(text))
+        if num_tokens > limit:
+            raise HTTPException(status_code=400, detail=f"Message too long. Tokens: {num_tokens}, Limit: {limit}")
+    except Exception as e:
+        # Fallback if tiktoken fails
+        logger.warning(f"Tiktoken failed: {e}. using character approximation.")
+        estimated_tokens = len(text) / 4
+        if estimated_tokens > limit:
+            raise HTTPException(status_code=400, detail=f"Message too long (est). Limit: {limit}")
 
 @app.get("/health")
 def health_check():
@@ -170,13 +178,16 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None),
 
     elif event['type'] == 'customer.subscription.deleted':
         subscription = event['data']['object']
-        # We need to find the user by customer_id since email might not be in this event
-        # For simplicity, assuming we can query by customer_id if we added it to the model (we did)
-        # Note: In a real app, query by stripe_customer_id.
-        # Since our CRUD uses email as primary key, we might need a lookup or just rely on the fact
-        # that 'customer.subscription.deleted' usually has the customer object expanded or we query Stripe.
-        # For this MVP, we will skip complex reverse lookup unless critical.
-        pass
+        customer_id = subscription.get('customer')
+        
+        if customer_id:
+            updated_user = crud.update_subscription_by_stripe_id(db, customer_id, 'canceled')
+            if updated_user:
+                logger.info(f"Canceled subscription for customer_id: {customer_id}")
+            else:
+                logger.warning(f"Received cancellation for unknown customer_id: {customer_id}")
+        else:
+             logger.warning("Received cancellation event without customer_id")
 
     return {"status": "success"}
 

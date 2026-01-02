@@ -27,3 +27,13 @@ def update_user_subscription(db: Session, email: str, status: str, stripe_custom
     db.commit()
     db.refresh(user)
     return user
+
+def update_subscription_by_stripe_id(db: Session, stripe_customer_id: str, status: str):
+    user = db.query(User).filter(User.stripe_customer_id == stripe_customer_id).first()
+    if user:
+        user.subscription_status = status
+        user.is_active = status == 'active'
+        db.commit()
+        db.refresh(user)
+        return user
+    return None

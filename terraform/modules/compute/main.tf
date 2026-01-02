@@ -148,6 +148,10 @@ resource "google_cloud_run_v2_service" "backend" {
         name  = "REDIS_HOST"
         value = var.redis_host
       }
+      env {
+        name  = "FRONTEND_URL"
+        value = google_cloud_run_v2_service.frontend.uri
+      }
     }
   }
 }
