@@ -328,12 +328,13 @@ The CI/CD infrastructure automates the build and deployment process whenever cha
 **Artifact Registry:** A Docker repository (cloud-run-source-deploy) for storing container images.
 **Cloud Build Triggers:** Automated triggers that watch specific paths in the repository and execute the corresponding build configurations.
 
-### Steps
-**1. Connect Repository:** Ensure you have installed the "Cloud Build" GitHub App on your repository and connected it to your Google Cloud project.
-**2. Update `terraform.tfvars`:** You will need to add values for the new variables in your terraform.tfvars file (or pass them via command line):
+### Steps:
 
-     github_owner     = "your-username"
-     github_repo_name = "your-repo-name"
+   1. Connect GitHub to GCP (Prerequisite):
+       * Go to the Google Cloud Console > Cloud Build > Triggers (https://console.cloud.google.com/cloud-build/triggers).
+       * Click Manage Repositories > Connect Repository.
+       * Select GitHub and follow the authorization flow (this installs the Google Cloud Build App on your GitHub account).
+       * If you skip this, Terraform will fail to create the triggers even if you provide the correct names.
 
 ## What To Do: A Deployment Guide for the AI Platform
 
