@@ -45,21 +45,21 @@ resource "google_cloudbuild_trigger" "frontend" {
   depends_on = [google_artifact_registry_repository.repo]
 }
 
-data "google_project" "project" {
-  project_id = var.project_id
-}
+# data "google_project" "project" {
+#   project_id = var.project_id
+# }
 
-# Grant Cloud Build Service Account permissions to deploy to Cloud Run
-resource "google_project_iam_member" "cloudbuild_run_developer" {
-  project = var.project_id
-  role    = "roles/run.developer"
-  member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
-}
+# # Grant Cloud Build Service Account permissions to deploy to Cloud Run
+# resource "google_project_iam_member" "cloudbuild_run_developer" {
+#   project = var.project_id
+#   role    = "roles/run.developer"
+#   member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+# }
 
-# Grant Cloud Build Service Account permission to act as other service accounts (required for Cloud Run deploy)
-resource "google_project_iam_member" "cloudbuild_sa_user" {
-  project = var.project_id
-  role    = "roles/iam.serviceAccountUser"
-  member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
-}
+# # Grant Cloud Build Service Account permission to act as other service accounts (required for Cloud Run deploy)
+# resource "google_project_iam_member" "cloudbuild_sa_user" {
+#   project = var.project_id
+#   role    = "roles/iam.serviceAccountUser"
+#   member  = "serviceAccount:${data.google_project.project.number}@cloudbuild.gserviceaccount.com"
+# }
 
