@@ -63,14 +63,14 @@ if cache_name:
     # 1. Init LLM with the cache pointer
     # 2. Use a prompt template WITHOUT the system message (it's in the cache)
     llm = ChatVertexAI(
-        model_name="gemini-3-flash-preview", # Must match cache creation model
+        model_name="gemini-2.5-flash", # Must match cache creation model
         temperature=0.3,
         project=settings.PROJECT_ID,
         location=settings.REGION,
         cached_content=cache_name,
         safety_settings=SAFETY_SETTINGS
     )
-    
+
     prompt = ChatPromptTemplate.from_messages([
         # System instruction is implicit in cached_content
         ("human", """
@@ -93,7 +93,7 @@ else:
     # 1. Init LLM normally
     # 2. Use full prompt template with system message
     llm = ChatVertexAI(
-        model_name="gemini-3-flash-preview",
+        model_name="gemini-2.5-flash",
         temperature=0.3,
         project=settings.PROJECT_ID,
         location=settings.REGION,
@@ -102,7 +102,7 @@ else:
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_INSTRUCTION_TEXT + """
-        
+
 <trusted_knowledge_base>
 {context}
 </trusted_knowledge_base>
@@ -169,13 +169,13 @@ async def protected_chain_invoke(input_text: str, session_id: str):
 
     # Step B: Sanitize Input (DLP)
     safe_input = await deidentify_content(input_text, settings.PROJECT_ID)
-    
+
     # Step C: Run Chain asynchronously
     response = await conversational_rag_chain.ainvoke(
         {"question": safe_input},
         config={"configurable": {"session_id": session_id}}
     )
-    
+
     # Step D: Sanitize Output
     safe_output = await deidentify_content(response.content, settings.PROJECT_ID)
     return safe_output
@@ -192,7 +192,7 @@ async def protected_chain_stream(input_text: str, session_id: str):
 
     # Step B: Sanitize Input
     safe_input = await deidentify_content(input_text, settings.PROJECT_ID)
-    
+
     # Step C: Stream Chain
     async for chunk in conversational_rag_chain.astream(
         {"question": safe_input},

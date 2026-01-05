@@ -218,3 +218,4 @@ frontend-nextjs/node_modules
 frontend-nextjs/.next
 backend-agent/venv
 .env
+.env.local
