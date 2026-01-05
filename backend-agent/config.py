@@ -59,31 +59,61 @@ class Settings(BaseSettings):
             # but generally we want to fail if infrastructure implies they exist.
             pass
 
-        db_host_secret = get_secret(self.PROJECT_ID, "DB_HOST")
-        if db_host_secret: self.DB_HOST = db_host_secret
+        try:
+            db_host_secret = get_secret(self.PROJECT_ID, "DB_HOST")
+            if db_host_secret: self.DB_HOST = db_host_secret
+        except Exception as e:
+            print(f"Warning: Could not fetch DB_HOST from secrets: {e}")
 
-        db_user_secret = get_secret(self.PROJECT_ID, "DB_USER")
-        if db_user_secret: self.DB_USER = db_user_secret
+        try:
+            db_user_secret = get_secret(self.PROJECT_ID, "DB_USER")
+            if db_user_secret: self.DB_USER = db_user_secret
+        except Exception as e:
+             print(f"Warning: Could not fetch DB_USER from secrets: {e}")
 
-        db_name_secret = get_secret(self.PROJECT_ID, "DB_NAME")
-        if db_name_secret: self.DB_NAME = db_name_secret
+        try:
+            db_name_secret = get_secret(self.PROJECT_ID, "DB_NAME")
+            if db_name_secret: self.DB_NAME = db_name_secret
+        except Exception as e:
+             print(f"Warning: Could not fetch DB_NAME from secrets: {e}")
 
-        redis_host_secret = get_secret(self.PROJECT_ID, "REDIS_HOST")
-        if redis_host_secret: self.REDIS_HOST = redis_host_secret
+        try:
+            redis_host_secret = get_secret(self.PROJECT_ID, "REDIS_HOST")
+            if redis_host_secret: self.REDIS_HOST = redis_host_secret
+        except Exception as e:
+             print(f"Warning: Could not fetch REDIS_HOST from secrets: {e}")
 
-        redis_password_secret = get_secret(self.PROJECT_ID, "REDIS_PASSWORD")
-        if redis_password_secret: self.REDIS_PASSWORD = redis_password_secret
+        try:
+            redis_password_secret = get_secret(self.PROJECT_ID, "REDIS_PASSWORD")
+            if redis_password_secret: self.REDIS_PASSWORD = redis_password_secret
+        except Exception as e:
+             print(f"Warning: Could not fetch REDIS_PASSWORD from secrets: {e}")
 
         # Fetch Secrets
-        self.DB_PASSWORD = get_secret(self.PROJECT_ID, "DB_PASSWORD")
-        self.STRIPE_API_KEY = get_secret(self.PROJECT_ID, "STRIPE_API_KEY")
-        self.STRIPE_WEBHOOK_SECRET = get_secret(self.PROJECT_ID, "STRIPE_WEBHOOK_SECRET")
+        try:
+            self.DB_PASSWORD = get_secret(self.PROJECT_ID, "DB_PASSWORD")
+        except Exception as e:
+             print(f"Warning: Could not fetch DB_PASSWORD from secrets: {e}")
+
+        try:
+            self.STRIPE_API_KEY = get_secret(self.PROJECT_ID, "STRIPE_API_KEY")
+        except Exception as e:
+             print(f"Warning: Could not fetch STRIPE_API_KEY from secrets: {e}")
+
+        try:
+            self.STRIPE_WEBHOOK_SECRET = get_secret(self.PROJECT_ID, "STRIPE_WEBHOOK_SECRET")
+        except Exception as e:
+             print(f"Warning: Could not fetch STRIPE_WEBHOOK_SECRET from secrets: {e}")
 
         # Try to fetch DATABASE_URL from secrets first
-        db_url_secret = get_secret(self.PROJECT_ID, "DATABASE_URL")
-        if db_url_secret:
-            self.DATABASE_URL = db_url_secret
-        else:
+        try:
+            db_url_secret = get_secret(self.PROJECT_ID, "DATABASE_URL")
+            if db_url_secret:
+                self.DATABASE_URL = db_url_secret
+        except Exception as e:
+             print(f"Warning: Could not fetch DATABASE_URL from secrets: {e}")
+
+        if not self.DATABASE_URL:
             # Fallback: construct it
             if self.DB_HOST and self.DB_PASSWORD:
                  self.DATABASE_URL = f"postgresql://{quote_plus(self.DB_USER)}:{quote_plus(self.DB_PASSWORD)}@{self.DB_HOST}:5432/{self.DB_NAME}"
@@ -91,8 +121,9 @@ class Settings(BaseSettings):
                  self.DATABASE_URL = "postgresql://user:password@localhost/dbname"
 
     class Config:
-        # No env_file for production as secrets are injected as env vars
-        pass
+        # Load .env file for local development
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 settings = Settings()
 settings.load_secrets()
