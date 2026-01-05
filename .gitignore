@@ -216,5 +216,5 @@ docker-compose.yaml
 # Node.js
 frontend-nextjs/node_modules
 frontend-nextjs/.next
-backend-agent/myenv
+backend-agent/venv
 .env

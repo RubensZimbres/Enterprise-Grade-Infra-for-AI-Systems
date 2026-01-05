@@ -35,6 +35,20 @@ from slowapi.errors import RateLimitExceeded
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize Limiter
+def get_real_ip(request: Request):
+    """
+    Extracts the real client IP from X-Forwarded-For header.
+    Falls back to remote address if header is missing.
+    """
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+limiter = Limiter(key_func=get_real_ip)
+app = FastAPI(title="Enterprise AI Agent", version="1.0.0")
+
 # Request Logging Middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -75,20 +89,6 @@ tracer_provider = TracerProvider()
 cloud_trace_exporter = CloudTraceSpanExporter()
 tracer_provider.add_span_processor(BatchSpanProcessor(cloud_trace_exporter))
 trace.set_tracer_provider(tracer_provider)
-
-# Initialize Limiter
-def get_real_ip(request: Request):
-    """
-    Extracts the real client IP from X-Forwarded-For header.
-    Falls back to remote address if header is missing.
-    """
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return get_remote_address(request)
-
-limiter = Limiter(key_func=get_real_ip)
-app = FastAPI(title="Enterprise AI Agent", version="1.0.0")
 
 # Instrument FastAPI
 FastAPIInstrumentor.instrument_app(app)
@@ -193,23 +193,25 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None),
 
 @app.post("/chat", response_model=ChatResponse)
 @limiter.limit("10/minute")
-async def chat_endpoint(request: ChatRequest, fastapi_req: Request, user_email: str = Depends(get_current_user)):
+async def chat_endpoint(chat_request: ChatRequest, request: Request, user_email: str = Depends(get_current_user)):
     """
     Main entry point for the Frontend Agent.
     Handles RAG, Memory, and DLP.
     """
     try:
         # Enforce Token Limits
-        validate_token_count(request.message, limit=2000)
+        validate_token_count(chat_request.message, limit=2000)
 
         # FIX (IDOR): Scope the session_id to the authenticated user
-        secure_session_id = f"{user_email}:{request.session_id}"
+        secure_session_id = f"{user_email}:{chat_request.session_id}"
 
         # Invoke the chain with guardrails asynchronously
-        response_text = await protected_chain_invoke(request.message, secure_session_id)
+        response_text = await protected_chain_invoke(chat_request.message, secure_session_id)
 
         return ChatResponse(response=response_text)
 
+    except HTTPException as e:
+        raise e
     except Exception as e:
         # Log the stack trace securely (Hidden from user)
         logger.error("Error processing request", exc_info=True)
@@ -217,20 +219,22 @@ async def chat_endpoint(request: ChatRequest, fastapi_req: Request, user_email: 
 
 @app.post("/stream")
 @limiter.limit("10/minute")
-async def stream_endpoint(request: ChatRequest, fastapi_req: Request, user_email: str = Depends(get_current_user)):
+async def stream_endpoint(chat_request: ChatRequest, request: Request, user_email: str = Depends(get_current_user)):
     """
     Streaming version of the chat endpoint.
     """
     try:
         # Enforce Token Limits
-        validate_token_count(request.message, limit=2000)
+        validate_token_count(chat_request.message, limit=2000)
 
-        secure_session_id = f"{user_email}:{request.session_id}"
+        secure_session_id = f"{user_email}:{chat_request.session_id}"
 
         return StreamingResponse(
-            protected_chain_stream(request.message, secure_session_id),
+            protected_chain_stream(chat_request.message, secure_session_id),
             media_type="text/event-stream"
         )
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error("Error in streaming response", exc_info=True)
         raise HTTPException(status_code=500, detail="Streaming Error")

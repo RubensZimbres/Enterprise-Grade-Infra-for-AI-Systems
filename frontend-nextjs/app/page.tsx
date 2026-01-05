@@ -6,7 +6,7 @@ export default function LandingPage() {
   return (
     <main className="flex flex-col h-screen max-w-4xl mx-auto p-4 md:p-8 justify-center items-center">
       <div className="flex flex-col items-center gap-6 text-center">
-        <div className="p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/20">
+        <div className="p-4 bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/20" aria-label="Secure Shield Icon">
           <ShieldCheck className="w-16 h-16 text-white" />
         </div>
         

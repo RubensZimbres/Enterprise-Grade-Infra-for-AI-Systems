@@ -45,6 +45,8 @@ resource "google_cloudbuild_trigger" "frontend" {
   depends_on = [google_artifact_registry_repository.repo]
 }
 
+## CHECK FOR PROJECT
+
 # data "google_project" "project" {
 #   project_id = var.project_id
 # }
