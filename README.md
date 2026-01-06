@@ -37,11 +37,11 @@ This repository contains a full-stack, secure AI platform deployed on Google Clo
 -   *`storage`**: Buckets and lifecycle policies.
 
 ## Architecture Decisions & Rationale
-1. **Authentication: Google Identity (IAP) vs. Firebase**
-   I explicitly chose **Identity-Aware Proxy (IAP)** over Firebase Authentication for this enterprise architecture.
-   *   **Zero-Code Auth:** IAP handles the entire login flow (OIDC, 2FA, session management) at the infrastructure level (Load Balancer) before the request ever reaches the container. This eliminates the need for complex auth logic in the application code.
-   *   **Zero Trust:** It enforces a "Zero Trust" model where access is granted based on identity and context at the edge, rather than just at the application level.
-   *   **Enterprise Integration:** It integrates seamlessly with Google Workspace identities, making it ideal for internal enterprise tools.
+1. **Authentication: Firebase Authentication vs. Google Identity (IAP)**
+   I explicitly chose **Firebase Authentication** over Identity-Aware Proxy (IAP) for this architecture.
+   *   **Seamless Frontend Integration:** Firebase provides a rich, client-side SDK that integrates natively with the Next.js application, offering a smoother, customizable user experience (login pages, social providers) compared to IAP's rigid, infrastructure-level interception.
+   *   **Public-Facing Scalability:** Unlike IAP, which is optimized for internal enterprise tools (Google Workspace identities), Firebase Authentication is designed for consumer-scale applications (B2C), supporting millions of users with a generous free tier and ease of external sign-ups.
+   *   **Developer Experience:** It allows for rapid prototyping and deployment without complex load balancer configurations, while still maintaining high security standards through JWT verification on the backend using the Firebase Admin SDK.
 2. **Communication: Asyncio vs. Pub/Sub**
    While Pub/Sub is excellent for decoupled, asynchronous background tasks, I utilize **Python's asyncio** within FastAPI for the chat interface.
    *   **Real-Time Requirement:** Chat users expect immediate, streaming responses. Pub/Sub is a "fire-and-forget" mechanism designed for background processing, not for maintaining the open, bidirectional HTTP connections required for streaming LLM tokens to a user in real-time.
