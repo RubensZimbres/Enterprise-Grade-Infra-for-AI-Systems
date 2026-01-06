@@ -410,6 +410,11 @@ To run tests in watch mode (re-runs on file changes):
 npm run test:watch
 ```
 
+```bash
+npx playwright install
+npx playwright test                                                                                                            │
+```
+
 ### Directory Structure
 *   `__tests__/`: Contains the test files (e.g., `LandingPage.test.tsx`).
 *   `jest.config.ts`: Jest configuration.
@@ -456,6 +461,70 @@ Terraform creates Cloud Build triggers that watch your repo. You **must** connec
 2.  Click **Manage Repositories** -> **Connect Repository**.
 3.  Select **GitHub** and follow the authorization flow.
 4.  Select the repository containing this code.
+
+# Cloud Build Trigger Setup for Frontend
+
+To deploy the frontend successfully, you must create a Cloud Build trigger that passes your Firebase configuration as substitution variables. This is required because Next.js embeds `NEXT_PUBLIC_` variables into the application at **build time**, not runtime.
+
+## Required Substitutions
+
+When creating the trigger, you must add the following **User-defined substitutions** with your actual Firebase project values:
+
+| Variable Name | Description |
+| :--- | :--- |
+| `_NEXT_PUBLIC_FIREBASE_API_KEY` | Your Firebase API Key |
+| `_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Your Firebase Auth Domain (e.g., `project.firebaseapp.com`) |
+| `_NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Your Firebase Project ID |
+| `_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Your Firebase Storage Bucket (e.g., `project.appspot.com`) |
+| `_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Your Firebase Messaging Sender ID |
+| `_NEXT_PUBLIC_FIREBASE_APP_ID` | Your Firebase App ID |
+
+## Setup Instructions (Google Cloud Console)
+
+1.  Go to **Cloud Build** > **Triggers** in the Google Cloud Console.
+2.  Click **Create Trigger**.
+3.  **Name**: Give it a name like `frontend-deploy`.
+4.  **Event**: Select **Push to a branch**.
+5.  **Source**: Select your repository and the branch (e.g., `^main$`).
+6.  **Configuration**: Select **Cloud Build configuration file (yaml or json)**.
+7.  **Location**: Enter `cloudbuild-frontend.yaml`.
+8.  Scroll down to **Advanced** > **Substitution variables**.
+9.  Click **Add Variable** for each of the variables listed above and paste your actual values.
+10. Click **Create**.
+
+## Security Note
+
+Since these variables are prefixed with `NEXT_PUBLIC_`, Next.js will bundle them into the client-side JavaScript code. They are safe to be exposed to the browser (as they are required for the Firebase client SDK to work), but you should ensure your Firebase Security Rules are configured correctly to secure your data.
+
+---
+
+# Cloud Build Trigger Setup for Backend
+
+The backend deployment is simpler because environment variables are injected at **runtime** (via Cloud Run configuration), not build time.
+
+## Setup Instructions (Google Cloud Console)
+
+1.  Go to **Cloud Build** > **Triggers**.
+2.  Click **Create Trigger**.
+3.  **Name**: `backend-deploy`.
+4.  **Event**: Select **Push to a branch**.
+5.  **Source**: Select your repository and branch (e.g., `^main$`).
+6.  **Configuration**: Select **Cloud Build configuration file (yaml or json)**.
+7.  **Location**: Enter `cloudbuild-backend.yaml`.
+8.  **Ignored Files** (Optional but Recommended): Add `frontend-nextjs/**` to prevent backend builds when only frontend code changes.
+9.  Click **Create**.
+
+## Important: Runtime Configuration
+
+Unlike the frontend, the backend secrets (like DB passwords) are **NOT** set in the trigger. You must set them on the Cloud Run service itself:
+
+1.  Go to **Cloud Run**.
+2.  Select the `backend-agent` service.
+3.  Click **Edit & Deploy New Revision**.
+4.  Go to the **Variables & Secrets** tab.
+5.  Add the required environment variables (see `backend-agent/config.py` for the list, e.g., `DB_HOST`, `DB_PASSWORD`, `STRIPE_API_KEY`).
+6.  Click **Deploy**.
+
 
 ### Step 3: Grant IAM Permissions
 Terraform needs permission to manage IAM policies, and Cloud Build needs permission to deploy.

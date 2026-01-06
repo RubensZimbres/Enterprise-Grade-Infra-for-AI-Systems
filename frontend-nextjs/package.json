@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google-cloud/secret-manager": "^6.1.1",
+    "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.6.0",
     "ai": "^6.0.3",
     "clsx": "^2.1.0",
@@ -27,6 +28,7 @@
     "tailwind-merge": "^2.2.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
