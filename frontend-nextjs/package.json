@@ -16,7 +16,7 @@
     "@stripe/stripe-js": "^8.6.0",
     "ai": "^6.0.3",
     "clsx": "^2.1.0",
-    "firebase": "^10.8.0",
+    "firebase": "^11.0.0",
     "framer-motion": "^11.0.3",
     "google-auth-library": "^9.6.3",
     "lucide-react": "^0.330.0",
