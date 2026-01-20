@@ -17,6 +17,8 @@ This repository contains a full-stack, secure AI platform deployed on Google Clo
 -   **Resilience:** **Circuit Breaker** `opossum` for fail-fast backend communication.
 -   **Security:** Acts as a secure proxy to the Backend; Authentication handled via Firebase.
 -   **Scalability:** Configured with `min_instances = 1` for zero-latency response.
+-   **Reliability:** Implements circuit breakers (opossum) for external API calls.
+-   **Testing:** Comprehensive coverage with Jest (Unit) and Playwright (E2E).
 
 ### Backend (FastAPI Agent)
 -   **Location:** `/backend-agent`
@@ -24,6 +26,8 @@ This repository contains a full-stack, secure AI platform deployed on Google Clo
 -   **Resilience:** **Retries** `tenacity`) for transient errors & **OpenTelemetry** tracing.
 -   **Vector DB:** Cloud SQL for PostgreSQL 15 with `pgvector` and `asyncpg`.
 -   **Networking:** Set to `INGRESS_TRAFFIC_INTERNAL_ONLY` to ensure it is unreachable from the public internet.
+-   **Observability:** Full OpenTelemetry instrumentation (Traces exported to Google Cloud Trace).
+-   **Security:** Rate limiting (slowapi) and integration with Google Cloud DLP (Data Loss Prevention) suggests a focus on enterprise compliance.
 
 ### Infrastructure (Terraform Modules)
 -   *`cicd`**: CI/CD pipeline.
@@ -35,6 +39,16 @@ This repository contains a full-stack, secure AI platform deployed on Google Clo
 -   *`billing_monitoring`**: Budgets, Alert Policies, and Notification Channels.
 -   *`function`**: Google Cloud Functions for PDF Ingestion.
 -   *`storage`**: Buckets and lifecycle policies.
+
+The infrastructure is defined as code (IaC) using modular Terraform, adhering to Google Cloud best practices:
+-   **Compute:** Decoupled frontend and backend services (likely Cloud Run) and event-driven Cloud Functions for async processing.
+-   **Data Layer:**
+       **Primary DB:** Cloud SQL (PostgreSQL) with pgvector for vector similarity search.
+       **Caching:** Cloud Memorystore (Redis) for session/cache management.
+       **Storage:** Cloud Storage for raw assets (PDFs).
+-   **Networking:** Custom VPC with private subnets and specific ingress controls.
+-   **Security:** IAM roles are granularly assigned (e.g., specific service accounts accessing specific secrets).
+
 
 ## Architecture Decisions & Rationale
 1. **Authentication: Firebase Authentication vs. Google Identity (IAP)**
@@ -415,6 +429,13 @@ npx playwright install
 npx playwright test                                                                                                            │
 ```
 
+## Cloud Functions Testing
+
+```bash
+cd functions/pdf-ingest
+pytest
+```
+
 ### Directory Structure
 *   `__tests__/`: Contains the test files (e.g., `LandingPage.test.tsx`).
 *   `jest.config.ts`: Jest configuration.
@@ -537,8 +558,8 @@ notification_email = "admin@example.com"
 ```bash
 terraform init
 terraform validate
-terraform plan
-terraform apply
+terraform plan -out=after_review.tfplan
+terraform apply after_review.tfplan
 ```
 
 Type `yes` when prompted. This process will take 15-20 minutes.
@@ -592,6 +613,9 @@ The backend deployment is simpler because environment variables are injected at 
    - **Location**: `cloudbuild-backend.yaml`
    - **Ignored Files** (Optional): `frontend-nextjs/**`
 4. Click **Save/Create**.
+
+It will: **1. Test** (Run pytest/npm test) -> **2. Build** -> **3. Deploy**
+
 
 ---
 

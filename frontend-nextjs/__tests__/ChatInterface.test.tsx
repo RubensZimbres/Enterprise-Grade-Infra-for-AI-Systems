@@ -38,6 +38,7 @@ describe('ChatPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     (auth.currentUser?.getIdToken as jest.Mock).mockResolvedValue('mock-token');
     
     // Default fetch mock to prevent undefined errors
@@ -53,6 +54,10 @@ describe('ChatPage', () => {
       },
       json: jest.fn().mockResolvedValue({}),
     });
+  });
+
+  afterEach(() => {
+    (console.error as jest.Mock).mockRestore();
   });
 
   it('renders input and empty state', () => {

@@ -4,6 +4,17 @@ substitutions:
   _SERVICE_NAME: "backend-agent"
 
 steps:
+  # 0. Run Unit Tests
+  - name: 'python:3.12-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        cd backend-agent
+        pip install -r requirements.txt
+        pytest
+    id: 'Run Tests'
+
   # 1. Build the Container Image using the Dockerfile in backend-agent/
   - name: 'gcr.io/cloud-builders/docker'
     args: 
