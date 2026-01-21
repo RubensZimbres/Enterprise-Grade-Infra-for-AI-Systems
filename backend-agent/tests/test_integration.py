@@ -28,7 +28,7 @@ def test_full_chat_flow(client):
     # Use dependency_overrides for Auth
     app.dependency_overrides[get_current_user] = lambda: {"uid": "test-user"}
     
-    with patch("main.protected_chain_invoke", return_value="Integrated Response"):
+    with patch("main.protected_graph_invoke", return_value="Integrated Response"):
         res = client.post("/chat", json={"session_id": "test-session", "message": "hello"})
         assert res.status_code == 200
         assert res.json()["response"] == "Integrated Response"
@@ -38,7 +38,7 @@ def test_full_chat_flow(client):
         yield "Streamed"
         yield "Response"
 
-    with patch("main.protected_chain_stream", side_effect=mock_generator):
+    with patch("main.protected_graph_stream", side_effect=mock_generator):
         res = client.post("/stream", json={"session_id": "test-session", "message": "hello"})
         assert res.status_code == 200
         assert b"StreamedResponse" in res.content

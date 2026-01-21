@@ -57,7 +57,7 @@ async def test_ingest_flow(mock_pgvector, mock_embeddings, mock_splitter, mock_l
 
 # --- Chat Flow with Permissions Tests ---
 
-@patch("main.protected_chain_invoke")
+@patch("main.protected_graph_invoke")
 @patch("dependencies.auth.verify_id_token")
 @patch("dependencies.crud.get_user")
 def test_chat_flow_active_user(mock_get_user, mock_verify, mock_chain, client, mock_db_session):

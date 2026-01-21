@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from chains.rag_chain import protected_chain_invoke, protected_chain_stream
+from chains.agent_graph import protected_graph_invoke, protected_graph_stream
 from dependencies import get_current_user
 from database import engine, get_db
 from config import settings
@@ -206,7 +206,7 @@ async def chat_endpoint(chat_request: ChatRequest, request: Request, user_email:
         secure_session_id = f"{user_email}:{chat_request.session_id}"
 
         # Invoke the chain with guardrails asynchronously
-        response_text = await protected_chain_invoke(chat_request.message, secure_session_id)
+        response_text = await protected_graph_invoke(chat_request.message, secure_session_id)
 
         return ChatResponse(response=response_text)
 
@@ -230,7 +230,7 @@ async def stream_endpoint(chat_request: ChatRequest, request: Request, user_emai
         secure_session_id = f"{user_email}:{chat_request.session_id}"
 
         return StreamingResponse(
-            protected_chain_stream(chat_request.message, secure_session_id),
+            protected_graph_stream(chat_request.message, secure_session_id),
             media_type="text/event-stream"
         )
     except HTTPException as e:
