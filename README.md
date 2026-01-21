@@ -507,7 +507,6 @@ Terraform needs permission to manage IAM policies, and Cloud Build needs permiss
 ```bash
 PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format="value(projectNumber)")
 
-# Grant Cloud Build permissions
 gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
   --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
   --role="roles/run.admin"
@@ -986,3 +985,4 @@ gcloud firestore databases restore \
 
 **Acknowledgements**
 ✨ Google ML Developer Programs and Google Developers Program supported this work by providing Google Cloud Credits (and awesome tutorials for the Google Developer Experts)✨
+
