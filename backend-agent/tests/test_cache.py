@@ -2,12 +2,18 @@ import pytest
 from unittest.mock import MagicMock, patch
 import sys
 import importlib.util
+import os
 
 # Setup mocks for dependencies BEFORE importing the real module
 mock_genai = MagicMock()
 mock_genai_types = MagicMock()
 # This ensures that 'from google.genai.types import CreateCachedContentConfig' works
 mock_genai.types = mock_genai_types
+
+# Resolve the absolute path to cache_manager.py
+# Assuming test_cache.py is in backend-agent/tests/ and cache_manager.py is in backend-agent/
+current_dir = os.path.dirname(os.path.abspath(__file__))
+module_path = os.path.join(current_dir, "../cache_manager.py")
 
 # Patch sys.modules to include the mocks
 with patch.dict(sys.modules, {
@@ -16,7 +22,7 @@ with patch.dict(sys.modules, {
     "config": MagicMock()
 }):
     # Load the real module
-    spec = importlib.util.spec_from_file_location("cache_manager_real", "cache_manager.py")
+    spec = importlib.util.spec_from_file_location("cache_manager_real", module_path)
     cache_manager_real = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cache_manager_real)
 
