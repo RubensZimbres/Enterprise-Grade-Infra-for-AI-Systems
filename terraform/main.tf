@@ -107,6 +107,26 @@ resource "google_secret_manager_secret_iam_member" "frontend_stripe_publishable_
   member    = "serviceAccount:${module.compute.frontend_sa_email}"
 }
 
+resource "google_secret_manager_secret" "stripe_webhook_secret" {
+  secret_id = "STRIPE_WEBHOOK_SECRET"
+  replication {
+    auto {}
+  }
+}
+
+# Allow Backend to access Stripe Secrets
+resource "google_secret_manager_secret_iam_member" "backend_stripe_secret_key_access" {
+  secret_id = google_secret_manager_secret.stripe_secret_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.compute.backend_sa_email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_stripe_webhook_secret_access" {
+  secret_id = google_secret_manager_secret.stripe_webhook_secret.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.compute.backend_sa_email}"
+}
+
 # Redis Password Secret
 resource "google_secret_manager_secret" "redis_password" {
   secret_id = "REDIS_PASSWORD"

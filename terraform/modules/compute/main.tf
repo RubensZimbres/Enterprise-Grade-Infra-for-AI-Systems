@@ -148,6 +148,37 @@ resource "google_cloud_run_v2_service" "backend" {
         name  = "REDIS_HOST"
         value = var.redis_host
       }
+      env {
+        name = "REDIS_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = "REDIS_PASSWORD"
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "STRIPE_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = "STRIPE_SECRET_KEY"
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "STRIPE_WEBHOOK_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = "STRIPE_WEBHOOK_SECRET"
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "FIRESTORE_COLLECTION"
+        value = "chat_history"
+      }
       # FRONTEND_URL removed to avoid circular dependency (Cycle: backend -> frontend -> backend)
       # If needed for CORS, consider using a wildcard or updating after creation.
     }
