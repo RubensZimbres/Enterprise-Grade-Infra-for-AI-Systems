@@ -33,4 +33,5 @@ pytest
 pytest-asyncio
 pytest-mock
 httpx
+pyasn1>=0.6.2
 langgraph
