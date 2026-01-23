@@ -1,14 +1,7 @@
 substitutions:
   _AR_HOSTNAME: "us-central1-docker.pkg.dev"
   _DEPLOY_REGION: "us-central1"
-  _SERVICE_NAME: "frontend-agent"
-  # User must provide these via Cloud Build Trigger variables
-  _NEXT_PUBLIC_FIREBASE_API_KEY: ""
-  _NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ""
-  _NEXT_PUBLIC_FIREBASE_PROJECT_ID: ""
-  _NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ""
-  _NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ""
-  _NEXT_PUBLIC_FIREBASE_APP_ID: ""
+  _SERVICE_NAME: "frontend-nextjs"
 
 steps:
   # 0. Run Unit Tests
@@ -22,35 +15,49 @@ steps:
         npm test
     id: 'Run Tests'
 
-  # 1. Build the Container Image using the Dockerfile in frontend-nextjs/
+  # 1. Fetch secrets from Secret Manager
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_API_KEY --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-api-key.txt
+        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-auth-domain.txt
+        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_PROJECT_ID --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-project-id.txt
+        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-storage-bucket.txt
+        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-messaging-sender-id.txt
+        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_APP_ID --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-app-id.txt
+    id: 'Fetch Secrets'
+
+  # 2. Build the Container Image using the Dockerfile in frontend-nextjs/
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_API_KEY=$_NEXT_PUBLIC_FIREBASE_API_KEY'
+      - 'NEXT_PUBLIC_FIREBASE_API_KEY=$(cat decrypted-api-key.txt)'
       - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'
+      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$(cat decrypted-auth-domain.txt)'
       - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=$_NEXT_PUBLIC_FIREBASE_PROJECT_ID'
+      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=$(cat decrypted-project-id.txt)'
       - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$_NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+      - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$(cat decrypted-storage-bucket.txt)'
       - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'
+      - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$(cat decrypted-messaging-sender-id.txt)'
       - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_APP_ID=$_NEXT_PUBLIC_FIREBASE_APP_ID'
+      - 'NEXT_PUBLIC_FIREBASE_APP_ID=$(cat decrypted-app-id.txt)'
       - '-t'
       - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/frontend:$COMMIT_SHA'
       - './frontend-nextjs'
     id: 'Build Frontend'
 
-  # 2. Push the Image to Artifact Registry
+  # 3. Push the Image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/frontend:$COMMIT_SHA'
     id: 'Push Frontend'
 
-  # 3. Deploy the new image to the existing Cloud Run Service
+  # 4. Deploy the new image to the existing Cloud Run Service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
