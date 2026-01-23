@@ -1,4 +1,4 @@
-# From PoC to Production: Enterprise AI Platform with RAG and Guardrails
+# From PoC to Production: Enterprise-Grade AI Platform for Multi-Agent Systems
 
 This repository contains a full-stack, secure AI platform deployed on Google Cloud via Terraform. It enables secure, RAG-based chat with enterprise-grade security and automated PII protection, accessible to public users via Firebase Authentication.
 
@@ -24,6 +24,38 @@ _Figure 2: Correspondent AWS Architecture_
 - **Reliability:** Implements circuit breakers (opossum) for external API calls.
 - **Testing:** Comprehensive coverage with Jest (Unit) and Playwright (E2E).
 
+#### Frontend Architecture Details
+
+The frontend is a modern Next.js application using the App Router with the following structure:
+
+**Core Components:**
+
+- **`AuthProvider.tsx`**: The cornerstone of the application's authentication system. Uses Firebase Authentication to manage user authentication state and protect routes from unauthorized access.
+- **`ChatInterface.tsx`**: The main chat interface providing a real-time, streaming chat experience. Tightly integrated with the backend API, it handles authentication and payment-related errors gracefully, redirecting users to the appropriate page when necessary.
+- **`PaymentClient.tsx`**: Provides a seamless and secure payment experience using Stripe's Embedded Checkout. Guides users through the payment process with graceful error handling.
+
+**Routing Structure:**
+
+| Route              | Description                                               |
+| ------------------ | --------------------------------------------------------- |
+| `/`                | Landing page - main entry point, funnels users to payment |
+| `/chat`            | Main chat interface                                       |
+| `/login`           | Login page                                                |
+| `/payment`         | Payment page                                              |
+| `/payment-success` | Displayed after successful payment                        |
+
+**API Routes (Server-Side):**
+
+- **`/api/chat`**: Acts as a secure and resilient proxy to the backend chat service. Uses a circuit breaker to prevent cascading failures and OIDC tokens for secure service-to-service authentication. Streams responses from the backend to the client for real-time chat.
+- **`/api/check-payment-status`**: Checks the status of a Stripe Checkout session and sets a cookie to persist payment status client-side.
+- **`/api/create-checkout-session`**: Creates a Stripe Checkout session and returns the `client_secret` for displaying the Stripe payment form.
+
+**Security Features:**
+
+- Secure handling of API keys and secrets
+- OIDC tokens for service-to-service authentication
+- User authentication tokens forwarded to backend for authorization
+
 ### Backend (FastAPI Agent)
 
 - **Location:** `/backend-agent`
@@ -34,17 +66,68 @@ _Figure 2: Correspondent AWS Architecture_
 - **Observability:** Full OpenTelemetry instrumentation (Traces exported to Google Cloud Trace).
 - **Security:** Rate limiting (slowapi) and integration with Google Cloud DLP (Data Loss Prevention) suggests a focus on enterprise compliance.
 
+#### Backend Architecture Details
+
+The backend is a robust FastAPI application with a strong focus on security, observability, and scalability.
+
+**API Endpoints:**
+
+| Endpoint   | Description                                                    |
+| ---------- | -------------------------------------------------------------- |
+| `/health`  | Standard health check endpoint                                 |
+| `/webhook` | Stripe webhook handler for managing user subscriptions         |
+| `/chat`    | Primary, non-streaming chat endpoint                           |
+| `/stream`  | Streaming version of chat endpoint for real-time communication |
+
+**Security Implementation:**
+
+- **Rate Limiting:** API is rate-limited to 10 requests per minute per IP address to prevent abuse.
+- **Input Validation:** Message size validation to prevent Denial-of-Service (DoS) attacks.
+- **Authentication:** The `get_current_user` dependency ensures all chat requests are authenticated.
+- **IDOR Prevention:** Session IDs are scoped to authenticated users, preventing cross-user session access.
+
+**Observability:**
+
+- **Structured Logging:** Provides clear and actionable log data.
+- **Distributed Tracing:** OpenTelemetry integration for monitoring and debugging in microservices architecture.
+
+**Data Layer:**
+
+- **Data Model:** PostgreSQL database stores user information including subscription status and Stripe customer ID. The `User` model is defined using SQLAlchemy.
+- **CRUD Operations:** All database operations (Create, Read, Update, Delete) are encapsulated in `crud.py` for maintainability and testability.
+- **Subscription Management:** Tight integration with Stripe; the `/webhook` endpoint listens for Stripe events and updates user subscription status.
+- **Secure Database Connection:** Database URL fetched from Google Secret Manager.
+
+**Knowledge Base (RAG Pipeline):**
+
+The `ingest.py` script builds and maintains the knowledge base:
+
+1. **Document Ingestion:** Ingests PDF documents from the `./data` directory using `DirectoryLoader` and `PyPDFLoader` from LangChain.
+2. **Text Chunking:** Uses `RecursiveCharacterTextSplitter` to break documents into manageable chunks for efficient RAG retrieval.
+3. **Vector Embeddings:** Uses `textembedding-gecko@003` model from Vertex AI to generate semantic vector embeddings.
+4. **Vector Store:** Uses `PGVector` to store document chunks and embeddings in PostgreSQL (AlloyDB) for scalable similarity searches.
+5. **Data Upsert:** The `add_documents` function upserts data to keep the knowledge base up-to-date.
+
+**Core AI Capabilities:**
+
+- **Intelligent Query Routing:** Distinguishes between general conversation and knowledge-base queries
+- **Retrieval-Augmented Generation (RAG):** Retrieves relevant information from PDF documents for accurate answers
+- **Conversational Memory:** Remembers previous turns for context-aware responses
+- **Multi-Layered Security:** Protection against common web vulnerabilities
+- **Data Loss Prevention (DLP):** Prevents leakage of sensitive information
+- **Resilient Design:** Handles transient errors and network failures
+
 ### Infrastructure (Terraform Modules)
 
-- \*`cicd`\*\*: CI/CD pipeline.
-- \*`network`\*\*: VPC, Subnets, Cloud NAT, and PSA.
-- \*`compute`\*\*: Cloud Run services and granular IAM policies.
-- \*`database`\*\*: Cloud SQL (PostgreSQL) and Firestore (Chat History).
-- \*`redis`\*\*: Memorystore for semantic caching.
-- \*`ingress`\*\*: Global Load Balancer, Cloud Armor, and SSL.
-- \*`billing_monitoring`\*\*: Budgets, Alert Policies, and Notification Channels.
-- \*`function`\*\*: Google Cloud Functions for PDF Ingestion.
-- \*`storage`\*\*: Buckets and lifecycle policies.
+- **`cicd`**: CI/CD pipeline.
+- **`network`**: VPC, Subnets, Cloud NAT, and PSA.
+- **`compute`**: Cloud Run services and granular IAM policies.
+- **`database`**: Cloud SQL (PostgreSQL) and Firestore (Chat History).
+- **`redis`**: Memorystore for semantic caching.
+- **`ingress`**: Global Load Balancer, Cloud Armor, and SSL.
+- **`billing_monitoring`**: Budgets, Alert Policies, and Notification Channels.
+- **`function`**: Google Cloud Functions for PDF Ingestion.
+- **`storage`**: Buckets and lifecycle policies.
 
 The infrastructure is defined as code (IaC) using modular Terraform, adhering to Google Cloud best practices:
 
@@ -55,6 +138,36 @@ The infrastructure is defined as code (IaC) using modular Terraform, adhering to
   **Storage:** Cloud Storage for raw assets (PDFs).
 - **Networking:** Custom VPC with private subnets and specific ingress controls.
 - **Security:** IAM roles are granularly assigned (e.g., specific service accounts accessing specific secrets).
+
+#### Terraform Architecture Assessment
+
+The Terraform configuration adheres to Google Cloud best practices for security, scalability, and maintainability with modular design, explicit dependency management, and a security-first approach.
+
+**Key Strengths:**
+
+**Security-First Design:**
+
+- **Network:** Private VPC, private subnets, and Cloud NAT gateway ensure services are not exposed to the public internet.
+- **Database:** Cloud SQL instance has no public IP and uses IAM authentication.
+- **Secrets Management:** Google Secret Manager stores all sensitive information.
+- **Ingress:** Cloud Armor with pre-configured OWASP Top 10 rules and rate limiting provides strong first-line defense.
+
+**Scalability and Resilience:**
+
+- **Serverless:** Cloud Run for frontend and backend enables automatic traffic-based scaling.
+- **Load Balancing:** Global external HTTPS load balancer distributes traffic efficiently with a single entry point.
+- **CDN:** Cloud CDN improves performance by caching static assets closer to users.
+- **Health Checks:** Startup and liveness probes for the backend service improve reliability.
+
+**Automation:**
+
+- The CI/CD pipeline in the `cicd` module automates build and deployment processes.
+
+**Frontend-Backend Flow Alignment:**
+
+- **Service Communication:** The `compute` module correctly configures Cloud Run services communication with secure environment variables and secrets.
+- **Data Flow:** The `database`, `redis`, and `storage` modules provision necessary data stores; the `function` module sets up the RAG data ingestion pipeline.
+- **Ingress and Egress:** The `ingress` module routes traffic to the frontend; the `network` module ensures outbound internet access through Cloud NAT.
 
 ## Architecture Decisions & Rationale
 
