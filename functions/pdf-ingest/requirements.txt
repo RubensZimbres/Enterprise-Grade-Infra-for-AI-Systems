@@ -10,8 +10,9 @@ pypdf>=6.0.0
 google-cloud-secret-manager
 
 # Security Fixes
-protobuf>=4.25.8
-urllib3>=1.26.19
+protobuf>=6.33.5
+urllib3>=2.6.3
 zipp>=3.19.1
-requests>=2.32.2
+requests>=2.32.4
 numpy>=1.22.0
+pyasn1>=0.6.2 # not directly required, pinned by Snyk to avoid a vulnerability
