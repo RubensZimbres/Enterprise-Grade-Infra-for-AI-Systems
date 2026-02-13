@@ -125,10 +125,9 @@ def format_docs(docs):
 
 # The Core Logic
 rag_chain = (
-    RunnableLambda(lambda x: x["question"])  # Extract question
-    | {
-        "context": get_retriever() | format_docs,
-        "question": lambda x: x,
+    {
+        "context": (lambda x: x["question"]) | get_retriever() | format_docs,
+        "question": lambda x: x["question"],
         "history": lambda x: x["history"] # Pass through history
     }
     | prompt

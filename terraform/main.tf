@@ -31,14 +31,16 @@ module "redis" {
 module "compute" {
   source = "./modules/compute"
 
-  project_id   = var.project_id
-  region       = var.region
-  vpc_name     = module.network.vpc_name
-  subnet_name  = module.network.private_subnet_name
-  db_host      = module.database.instance_ip
-  db_secret_id = module.database.secret_id
-  redis_host   = module.redis.host
-  depends_on   = [module.database, module.network, module.redis]
+  project_id           = var.project_id
+  region               = var.region
+  vpc_name             = module.network.vpc_name
+  subnet_name          = module.network.private_subnet_name
+  db_host              = module.database.instance_ip
+  db_secret_id         = module.database.secret_id
+  redis_host           = module.redis.host
+  stripe_secret_key_id = google_secret_manager_secret.stripe_secret_key.id
+  redis_password_id    = google_secret_manager_secret.redis_password.id
+  depends_on           = [module.database, module.network, module.redis]
 }
 
 module "billing_monitoring" {
@@ -122,6 +124,13 @@ resource "google_secret_manager_secret_version" "redis_password_version" {
 
 resource "google_secret_manager_secret_iam_member" "backend_redis_password_access" {
   secret_id = google_secret_manager_secret.redis_password.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${module.compute.backend_sa_email}"
+}
+
+# Allow Backend to access Stripe Secret Key
+resource "google_secret_manager_secret_iam_member" "backend_stripe_secret_key_access" {
+  secret_id = google_secret_manager_secret.stripe_secret_key.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${module.compute.backend_sa_email}"
 }
