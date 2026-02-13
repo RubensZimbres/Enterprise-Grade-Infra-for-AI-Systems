@@ -1,7 +1,5 @@
 # /terraform/main.tf
 
-# /terraform/main.tf
-
 module "network" {
   source = "./modules/network"
 

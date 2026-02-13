@@ -152,11 +152,7 @@ resource "google_cloud_run_v2_service" "backend" {
         name = "REDIS_PASSWORD"
         value_source {
           secret_key_ref {
-<<<<<<< HEAD
             secret  = var.redis_password_id
-=======
-            secret  = "REDIS_PASSWORD"
->>>>>>> 703160704334d46f22c789973015b880a18296f2
             version = "latest"
           }
         }
@@ -165,17 +161,11 @@ resource "google_cloud_run_v2_service" "backend" {
         name = "STRIPE_API_KEY"
         value_source {
           secret_key_ref {
-<<<<<<< HEAD
             secret  = var.stripe_secret_key_id
-=======
-            secret  = "STRIPE_SECRET_KEY"
->>>>>>> 703160704334d46f22c789973015b880a18296f2
             version = "latest"
           }
         }
       }
-<<<<<<< HEAD
-=======
       env {
         name = "STRIPE_WEBHOOK_SECRET"
         value_source {
@@ -189,7 +179,6 @@ resource "google_cloud_run_v2_service" "backend" {
         name  = "FIRESTORE_COLLECTION"
         value = "chat_history"
       }
->>>>>>> 703160704334d46f22c789973015b880a18296f2
       # FRONTEND_URL removed to avoid circular dependency (Cycle: backend -> frontend -> backend)
       # If needed for CORS, consider using a wildcard or updating after creation.
     }
