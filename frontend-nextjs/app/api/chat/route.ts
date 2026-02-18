@@ -9,7 +9,7 @@ const auth = new GoogleAuth();
 
 // --- Circuit Breaker Configuration ---
 const breakerOptions = {
-  timeout: 15000, // Timeout after 15 seconds (Backend is streaming, but initial connection should be fast)
+  timeout: 60000, // Timeout after 60 seconds to allow for slow RAG/LLM responses
   errorThresholdPercentage: 50, // Trip if 50% of requests fail
   resetTimeout: 10000, // Wait 10 seconds before trying again (Half-Open)
 };

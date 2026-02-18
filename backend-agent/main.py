@@ -71,8 +71,9 @@ async def log_requests(request: Request, call_next):
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up Backend Agent...")
+
+    # 1. Check Database Connectivity
     try:
-        # Check Database Connectivity
         with engine.connect() as connection:
             from sqlalchemy import text
 
@@ -80,6 +81,24 @@ async def startup_event():
         logger.info("✅ Database connection successful.")
     except Exception as e:
         logger.error(f"❌ Database connection failed: {e}")
+        raise RuntimeError(f"Database connection failed: {e}")  # Fail Fast
+
+    # 2. Check Redis Connectivity
+    try:
+        import redis
+
+        logger.info(f"Connecting to Redis at {settings.REDIS_HOST}...")
+        r = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=6379,
+            password=settings.REDIS_PASSWORD,
+            socket_connect_timeout=3,
+        )
+        r.ping()
+        logger.info("✅ Redis connection successful.")
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        raise RuntimeError(f"Redis connection failed: {e}")  # Fail Fast
 
     # Check Settings (Redacted)
     logger.info(f"Config: DB_HOST={settings.DB_HOST}, REDIS_HOST={settings.REDIS_HOST}")

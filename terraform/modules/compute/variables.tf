@@ -16,3 +16,13 @@ variable "redis_host" {
   description = "The host of the Redis instance"
   type        = string
 }
+
+variable "stripe_secret_key_id" {
+  description = "The ID of the secret containing the Stripe Secret Key"
+  type        = string
+}
+
+variable "redis_password_id" {
+  description = "The ID of the secret containing the Redis Password"
+  type        = string
+}

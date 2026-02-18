@@ -60,8 +60,8 @@ The frontend is a modern Next.js application using the App Router with the follo
 
 - **Location:** `/backend-agent`
 - **Neural Core:** Orchestrates RAG using LangChain and Vertex AI.
-- **Resilience:** **Retries** `tenacity`) for transient errors & **OpenTelemetry** tracing.
-- **Vector DB:** Cloud SQL for PostgreSQL 15 with `pgvector` and `asyncpg`.
+- **Resilience:** **Retries** (`tenacity`) for transient errors & **OpenTelemetry** tracing.
+- **Vector DB:** Cloud SQL for PostgreSQL 16 with `pgvector` and `asyncpg`.
 - **Networking:** Set to `INGRESS_TRAFFIC_INTERNAL_ONLY` to ensure it is unreachable from the public internet.
 - **Observability:** Full OpenTelemetry instrumentation (Traces exported to Google Cloud Trace).
 - **Security:** Rate limiting (slowapi) and integration with Google Cloud DLP (Data Loss Prevention) suggests a focus on enterprise compliance.
@@ -194,13 +194,13 @@ The Backend Agent is designed as a stateful, retrieval-augmented system that bal
 
 - **Storage:** Utilizes **Google Cloud Firestore (Native Mode)** for low-latency persistence of chat history.
 - **Implementation:** Leverages `FirestoreChatMessageHistory` within the LangChain framework.
-- **Security & Isolation:** Every session is cryptographically scoped to the authenticated user's email `user_email:session_id`). This ensures strict multi-tenancy where users can never access or "leak" into another's conversation history (IDOR protection).
+- **Security & Isolation:** Every session is cryptographically scoped to the authenticated user's email (`user_email:session_id`). This ensures strict multi-tenancy where users can never access or "leak" into another's conversation history (IDOR protection).
 - **Context Injection:** The system automatically retrieves the last $N$ messages and injects them into the history placeholder of the RAG prompt, enabling multi-turn, context-aware dialogue.
 
 ### 2. Long-Term Memory (Knowledge Base)
 
-- **Vector Database:** Powered by **PostgreSQL 15 (Cloud SQL)** with the vector extension `pgvector`).
-- **Retrieval Logic:** Employs semantic similarity search using `VertexAIEmbeddings` `textembedding-gecko@003`). For every query, the engine retrieves the top 5 most relevant chunks ($k=5$) to provide grounded context to the LLM.
+- **Vector Database:** Powered by **PostgreSQL 16 (Cloud SQL)** with the vector extension (`pgvector`).
+- **Retrieval Logic:** Employs semantic similarity search using `VertexAIEmbeddings` (`textembedding-gecko@003`). For every query, the engine retrieves the top 5 most relevant chunks ($k=5$) to provide grounded context to the LLM.
 - **Semantic Caching:** Integrated with **Redis (Memorystore)** using a `RedisSemanticCache`. If a user asks a question semantically similar to a previously cached query (threshold: 0.05), the system returns the cached response instantly, bypassing the LLM to save cost and reduce latency.
 
 ### 3. RAG Specifications & Document Ingestion
@@ -225,14 +225,14 @@ This platform implements a robust, multi-layered security strategy. The codebase
 ### 1. Web & Application Security (OWASP Top 10)
 
 - **SQL Injection (SQLi) Protection:**
-  - **Infrastructure Level:** Google Cloud Armor is configured with pre-configured WAF rules `sqli-v33-stable`) to filter malicious SQL patterns at the edge.
+  - **Infrastructure Level:** Google Cloud Armor is configured with pre-configured WAF rules (`sqli-v33-stable`) to filter malicious SQL patterns at the edge.
   - **Application Level:** The backend uses `asyncpg` (via LangChain's PGVector), which strictly employs parameterized queries, ensuring user input is never executed as raw SQL.
 - **Cross-Site Scripting (XSS) Protection:**
-  - **Infrastructure Level:** Cloud Armor WAF rules `xss-v33-stable`) detect and block malicious script injection attempts.
+  - **Infrastructure Level:** Cloud Armor WAF rules (`xss-v33-stable`) detect and block malicious script injection attempts.
   - **Framework Level:** Next.js (Frontend) automatically sanitizes and escapes content by default, and the backend returns structured JSON to prevent direct script rendering.
 - **Broken Access Control & IDOR (Insecure Direct Object Reference):**
-  - **Verified Identity (IAP):** The frontend acts as a Secure Proxy. It captures the user's identity from the Identity-Aware Proxy (IAP) headers `X-Goog-Authenticated-User-Email`) and propagates it to the backend.
-  - **Session Isolation:** Chat histories are cryptographically scoped to the authenticated user's identity `user_email:session_id`), preventing IDOR attacks where one user could access another's private history.
+  - **Verified Identity (Firebase):** The frontend acts as a Secure Proxy. It captures the user's identity from Firebase Authentication tokens (`X-Firebase-Token` header) and propagates it to the backend for verification.
+  - **Session Isolation:** Chat histories are cryptographically scoped to the authenticated user's identity (`user_email:session_id`), preventing IDOR attacks where one user could access another's private history.
 
 ### 2. DDoS & Resource Abuse Protection
 
@@ -242,7 +242,7 @@ This platform implements a robust, multi-layered security strategy. The codebase
 
 ### 3. AI & LLM Specific Security (OWASP Top 10 for LLM)
 
-- **Prompt Injection Mitigation:** The RAG prompt template uses strict structural delimiters `----------`) and prioritized system instructions to ensure the model adheres to its enterprise role and ignores adversarial overrides contained within documents or user queries.
+- **Prompt Injection Mitigation:** The RAG prompt template uses strict structural delimiters (`----------`) and prioritized system instructions to ensure the model adheres to its enterprise role and ignores adversarial overrides contained within documents or user queries.
 - **Sensitive Data Leakage (PII):** Google Cloud DLP (Data Loss Prevention) is integrated into the core pipeline with a Regex Fast-Path and Asynchronous Threading. This automatically detects and masks PII in real-time without blocking the main event loop, ensuring high performance while minimizing API costs.
 - **Knowledge Base Security:** Data is stored in a private Cloud SQL (PostgreSQL) instance reachable only via a Serverless VPC Access connector, ensuring the "Brain" of the AI is never exposed to the public internet.
 
@@ -283,12 +283,12 @@ This platform has been upgraded for production-scale performance, cost efficienc
 ### 2. Latency & Performance Optimization
 
 - **Asynchronous I/O (Neural Core):** The backend is built on FastAPI and uses `asyncpg` for non-blocking database connections. This allows a single instance to handle thousands of concurrent requests with minimal resource usage.
-- **Server-Sent Events (SSE):** Real-time token streaming from the LLM (Gemini 3 Flash) directly to the Next.js UI provides sub-second "Time-To-First-Token," creating a highly responsive user experience.
+- **Server-Sent Events (SSE):** Real-time token streaming from the LLM (Gemini 2.5 Flash) directly to the Next.js UI provides sub-second "Time-To-First-Token," creating a highly responsive user experience.
 - **Asynchronous Thread Pooling:** Expensive operations like PII de-identification via Google Cloud DLP are offloaded to asynchronous background threads, preventing them from blocking the main request-response cycle.
 
 ### 3. Cost Control & Efficiency
 
-- **Gemini 3 Flash Integration:** Utilizes the high-efficiency Flash model `gemini-3-flash-preview`) for a 10x reduction in token costs and significantly lower latency compared to larger models.
+- **Gemini 2.5 Flash Integration:** Utilizes the high-efficiency Flash model (`gemini-2.5-flash-preview-05-20`) for a 10x reduction in token costs and significantly lower latency compared to larger models.
 - **DLP Fast-Path Guardrails:** Implemented a high-performance regex-based "pre-check" for PII. This intelligently bypasses expensive Google Cloud DLP API calls for clean content, invoking the API only when potential PII patterns are detected.
 - **Global CDN Caching:** Google Cloud CDN is enabled at the Load Balancer level to cache static assets and common frontend resources globally, reducing origin server load and improving page load times.
 - **Smart Storage Versioning:** Implemented Object Lifecycle Management on Cloud Storage buckets. Files are automatically transitioned to **Nearline** storage after 7 days, **Archive** storage after 30 days, and **deleted** after 90 days. This ensures disaster recovery capabilities (versioning is enabled) without indefinite storage costs.
@@ -699,6 +699,59 @@ gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
 gcloud projects add-iam-policy-binding $(gcloud config get-value project) \
   --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
   --role="roles/iam.serviceAccountUser"
+```
+
+## 6. Database Migration Guide
+
+Your Cloud SQL instance is protected by a private IP configuration, which means you cannot connect to it directly from your local machine unless you are connected to the VPC (e.g., via VPN) or use a proxy.
+
+The `init-db.sql` script MUST be executed to enable the `vector` extension, otherwise the RAG functionality will fail.
+
+## Option 1: Using Cloud Shell (Easiest)
+
+1.  Upload `init-db.sql` to your Cloud Shell.
+2.  Connect to the database using the private IP (if Cloud Shell is configured for VPC access) or use the Auth Proxy.
+
+### Using Cloud SQL Auth Proxy in Cloud Shell
+
+1.  Enable the API:
+
+    ```bash
+    gcloud services enable sqladmin.googleapis.com
+    ```
+
+2.  Start the proxy (background):
+
+    ```bash
+    ./cloud_sql_proxy -instances=<PROJECT_ID>:<REGION>:<INSTANCE_NAME>=tcp:5432 &
+    ```
+
+3.  Run the script:
+    ```bash
+    psql "host=127.0.0.1 port=5432 sslmode=disable user=postgres dbname=postgres" -f init-db.sql
+    ```
+    _(You will need the password generated by Terraform. Check Secret Manager: `projects/<PROJECT_ID>/secrets/<PROJECT_ID>-cloudsql-password`)_
+
+## Option 2: Using a Temporary VM (Bastion Host)
+
+1.  Create a small VM in the same VPC (`<project-id>-vpc`) and Subnet as the database.
+2.  SSH into the VM.
+3.  Install the postgres client:
+    ```bash
+    sudo apt-get update && sudo apt-get install -y postgresql-client
+    ```
+4.  Upload or copy-paste `init-db.sql`.
+5.  Connect and run:
+    ```bash
+    psql -h <DB_PRIVATE_IP> -U postgres -d postgres -f init-db.sql
+    ```
+
+## Verification
+
+To verify the extension is installed, log into the database and run:
+
+```sql
+SELECT * FROM pg_extension WHERE extname = 'vector';
 ```
 
 ---
@@ -1153,6 +1206,15 @@ gcloud firestore databases restore \
 - [ ] **Re-enable Backups:** Ensure the new/restored instances have backup schedules re-applied (Terraform apply might be needed).
 
 ---
+
+## Pre-Commit
+
+```bash
+pre-commit install
+pre-commit run --all-files
+git status && git diff
+git add ... ... && git commit -m "...."
+```
 
 **Acknowledgements**
 ✨ Google ML Developer Programs and Google Developers Program supported this work by providing Google Cloud Credits (and awesome tutorials for the Google Developer Experts)✨

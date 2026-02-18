@@ -152,7 +152,7 @@ resource "google_cloud_run_v2_service" "backend" {
         name = "REDIS_PASSWORD"
         value_source {
           secret_key_ref {
-            secret  = "REDIS_PASSWORD"
+            secret  = var.redis_password_id
             version = "latest"
           }
         }
@@ -161,7 +161,7 @@ resource "google_cloud_run_v2_service" "backend" {
         name = "STRIPE_API_KEY"
         value_source {
           secret_key_ref {
-            secret  = "STRIPE_SECRET_KEY"
+            secret  = var.stripe_secret_key_id
             version = "latest"
           }
         }
@@ -206,7 +206,7 @@ resource "google_cloud_run_v2_service" "frontend" {
         network    = var.vpc_name
         subnetwork = var.subnet_name
       }
-      egress = "PRIVATE_RANGES_ONLY"
+      egress = "PRIVATE_RANGES_ONLY" ### If connectivity fails, switch egress to ALL_TRAFFIC
     }
 
     containers {
@@ -228,15 +228,6 @@ resource "google_cloud_run_v2_service" "frontend" {
         value_source {
           secret_key_ref {
             secret  = "STRIPE_PUBLISHABLE_KEY"
-            version = "latest"
-          }
-        }
-      }
-      env {
-        name = "STRIPE_SECRET_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = "STRIPE_SECRET_KEY"
             version = "latest"
           }
         }
@@ -327,6 +318,15 @@ resource "google_cloud_run_v2_job" "ingest_job" {
         env {
           name  = "REDIS_HOST"
           value = var.redis_host
+        }
+        env {
+          name = "REDIS_PASSWORD"
+          value_source {
+            secret_key_ref {
+              secret  = "REDIS_PASSWORD"
+              version = "latest"
+            }
+          }
         }
       }
     }

@@ -35,8 +35,8 @@ pyasn1>=0.6.2
 langgraph
 
 # Security Fixes (Transitive Dependencies)
-protobuf>=4.25.8
+protobuf>=6.33.5
 pyasn1>=0.6.2
 starlette>=0.40.0
-urllib3>=1.26.19
-setuptools>=70.0.0
+urllib3>=2.6.3
+setuptools>=78.1.1

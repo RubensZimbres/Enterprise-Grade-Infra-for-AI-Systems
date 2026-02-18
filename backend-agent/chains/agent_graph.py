@@ -32,7 +32,7 @@ class AgentState(TypedDict):
 
 
 # Node 1: Triage (Router)
-def triage_node(state: AgentState):
+async def triage_node(state: AgentState):
     """
     Determines if the user's query needs the RAG knowledge base or is just general chat.
     """
@@ -53,14 +53,14 @@ def triage_node(state: AgentState):
     )
 
     classifier = prompt | llm | StrOutputParser()
-    intent = classifier.invoke({"question": question})
+    intent = await classifier.ainvoke({"question": question})
 
     logger.info(f"Intent Classified: {intent}")
     return {"intent": intent.strip()}
 
 
 # Node 2: General Chat
-def general_node(state: AgentState):
+async def general_node(state: AgentState):
     """
     Handles general chit-chat without invoking the vector store.
     """
@@ -78,12 +78,12 @@ def general_node(state: AgentState):
     )
 
     chain = prompt | llm | StrOutputParser()
-    response = chain.invoke({"question": question})
+    response = await chain.ainvoke({"question": question})
     return {"answer": response}
 
 
 # Node 3: RAG (Knowledge Base)
-def rag_node(state: AgentState):
+async def rag_node(state: AgentState):
     """
     Invokes the existing RAG chain for technical queries.
     Uses conversational_rag_chain which handles history via Firestore automatically.
@@ -91,7 +91,7 @@ def rag_node(state: AgentState):
     logger.info("--- RAG NODE ---")
     # Get session_id from state (passed through from protected_graph_invoke)
     session_id = state.get("session_id", "default_session")
-    response = conversational_rag_chain.invoke(
+    response = await conversational_rag_chain.ainvoke(
         {"question": state["question"]},
         config={"configurable": {"session_id": session_id}},
     )

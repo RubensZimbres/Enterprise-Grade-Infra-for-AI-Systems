@@ -42,6 +42,19 @@ class Settings(BaseSettings):
         if not self.DATABASE_URL:
             self.DATABASE_URL = "postgresql://user:password@localhost/dbname"
 
+        # Production Validation
+        if self.DEBUG.lower() != "true":
+            missing_secrets = []
+            if not self.STRIPE_API_KEY:
+                missing_secrets.append("STRIPE_API_KEY")
+            if not self.STRIPE_WEBHOOK_SECRET:
+                missing_secrets.append("STRIPE_WEBHOOK_SECRET")
+            if not self.REDIS_PASSWORD:
+                missing_secrets.append("REDIS_PASSWORD")
+            
+            if missing_secrets:
+                raise ValueError(f"CRITICAL: Missing production secrets: {', '.join(missing_secrets)}")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

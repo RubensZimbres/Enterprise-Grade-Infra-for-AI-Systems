@@ -40,6 +40,14 @@ resource "google_secret_manager_secret_iam_member" "secret_access" {
   member    = "serviceAccount:${google_service_account.function_sa.email}"
 }
 
+# VPC Connector for Cloud Function to reach Private Cloud SQL
+resource "google_vpc_access_connector" "connector" {
+  name          = "pdf-ingest-conn"
+  region        = var.region
+  network       = var.vpc_name
+  ip_cidr_range = "10.8.0.0/28"
+}
+
 # Cloud Function (Gen 2)
 resource "google_cloudfunctions2_function" "function" {
   name        = "pdf-ingest-function"
@@ -62,6 +70,10 @@ resource "google_cloudfunctions2_function" "function" {
     available_memory      = "512M"
     timeout_seconds       = 300
     service_account_email = google_service_account.function_sa.email
+
+    # VPC Access
+    vpc_connector                 = google_vpc_access_connector.connector.id
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
 
     environment_variables = {
       PROJECT_ID = var.project_id

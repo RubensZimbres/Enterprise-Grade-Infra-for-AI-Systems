@@ -50,6 +50,7 @@ sys.modules["langchain_google_vertexai"] = MagicMock()
 sys.modules["langchain_postgres"] = MagicMock()
 sys.modules["langchain_google_firestore"] = MagicMock()
 sys.modules["langchain_redis"] = MagicMock()
+sys.modules["redis"] = MagicMock()
 
 # 4. Mock cache_manager to avoid GenAI calls
 mock_cache_manager_module = MagicMock()
