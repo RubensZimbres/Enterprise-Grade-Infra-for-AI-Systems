@@ -48,6 +48,7 @@ resource "google_sql_database_instance" "postgres" {
     ip_configuration {
       ipv4_enabled    = false # No public IP for security
       private_network = var.network_id
+      require_ssl     = true
     }
 
     backup_configuration {
@@ -65,6 +66,31 @@ resource "google_sql_database_instance" "postgres" {
     database_flags {
       name  = "cloudsql.iam_authentication"
       value = "on"
+    }
+
+    database_flags {
+      name  = "log_checkpoints"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_connections"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_disconnections"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_lock_waits"
+      value = "on"
+    }
+
+    database_flags {
+      name  = "log_temp_files"
+      value = "0"
     }
   }
 
