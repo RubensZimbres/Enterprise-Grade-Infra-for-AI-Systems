@@ -8,7 +8,6 @@ from langchain_postgres import PGVector
 from langchain_google_firestore import FirestoreChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.runnables import RunnableLambda
 from langchain_core.globals import set_llm_cache
 from langchain_redis import RedisSemanticCache
 from tenacity import (
@@ -155,7 +154,7 @@ rag_chain = (
     {
         "context": (lambda x: x["question"]) | get_retriever() | format_docs,
         "question": lambda x: x["question"],
-        "history": lambda x: x["history"] # Pass through history
+        "history": lambda x: x["history"],  # Pass through history
     }
     | prompt
     | llm

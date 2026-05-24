@@ -51,9 +51,11 @@ class Settings(BaseSettings):
                 missing_secrets.append("STRIPE_WEBHOOK_SECRET")
             if not self.REDIS_PASSWORD:
                 missing_secrets.append("REDIS_PASSWORD")
-            
+
             if missing_secrets:
-                raise ValueError(f"CRITICAL: Missing production secrets: {', '.join(missing_secrets)}")
+                raise ValueError(
+                    f"CRITICAL: Missing production secrets: {', '.join(missing_secrets)}"
+                )
 
     class Config:
         env_file = ".env"
