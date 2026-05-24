@@ -27,11 +27,7 @@ describe("ChatPage Integration Flow", () => {
 
   beforeAll(() => {
     Element.prototype.scrollIntoView = mockScrollIntoView;
-    global.TextDecoder = class {
-      decode() {
-        return "";
-      }
-    } as any;
+    global.TextDecoder = require("util").TextDecoder as any;
   });
 
   beforeEach(() => {
