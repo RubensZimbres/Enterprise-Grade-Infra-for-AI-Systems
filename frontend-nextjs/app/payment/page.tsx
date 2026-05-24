@@ -1,4 +1,3 @@
-import React from "react";
 import { getSecret } from "@/lib/secrets";
 import PaymentClient from "./PaymentClient";
 import { ShieldCheck } from "lucide-react";
