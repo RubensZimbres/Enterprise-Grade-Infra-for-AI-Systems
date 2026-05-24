@@ -125,7 +125,7 @@ def ingest_pdf(cloud_event):
         # Run async process
         asyncio.run(process_document(local_path))
     except Exception as e:
-        print(f"❌ Error processing document: {e}")
+        print("❌ Error processing document")
         raise e
     finally:
         # Cleanup

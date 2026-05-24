@@ -19,7 +19,7 @@ async def test_triage_node_rag():
     with patch("chains.agent_graph.llm") as mock_llm:
         # Mock the invoke method to return an AIMessage
         response = AIMessage(content="RAG")
-        
+
         # Ensure ainvoke is an AsyncMock so it can be awaited
         mock_llm.ainvoke = AsyncMock(return_value=response)
         # Also set return_value in case LangChain treats it as a callable function
