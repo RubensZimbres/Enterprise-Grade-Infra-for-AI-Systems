@@ -1,0 +1,9 @@
+project_id         = "your-project-id"
+region             = "us-central1"
+domain_name        = "app.yourdomain.com"
+billing_account    = "000000-000000-000000"
+notification_email = "your_email@example.com"
+
+# GitHub Configuration
+github_owner     = "YourGitHubUsername"
+github_repo_name = "your-repo-name"
