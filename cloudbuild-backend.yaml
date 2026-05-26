@@ -24,14 +24,24 @@ steps:
       - './backend-agent'
     id: 'Build Backend'
 
-  # 2. Push the Image to Artifact Registry
+  # 2. Hard Gate: Vulnerability Scan using Trivy
+  - name: 'aquasec/trivy'
+    args:
+      - 'image'
+      - '--exit-code=1'
+      - '--severity=HIGH,CRITICAL'
+      - '--no-progress'
+      - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/backend:$COMMIT_SHA'
+    id: 'Vulnerability Scan Gate'
+
+  # 3. Push the Image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/backend:$COMMIT_SHA'
     id: 'Push Backend'
 
-  # 3. Deploy the new image to the existing Cloud Run Service
+  # 4. Deploy the new image to the existing Cloud Run Service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:

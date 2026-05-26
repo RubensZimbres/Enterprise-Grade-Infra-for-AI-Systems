@@ -47,7 +47,8 @@ resource "google_project_service" "apis" {
     "cloudtrace.googleapis.com",
     "servicenetworking.googleapis.com",
     "cloudbuild.googleapis.com",
-    "artifactregistry.googleapis.com"
+    "artifactregistry.googleapis.com",
+    "containerscanning.googleapis.com"
   ])
 
   project            = var.project_id
