@@ -419,7 +419,7 @@ docker-compose up -d
 
 ### Configuration
 
-Create a `.env` file in `backend-agent/`:
+Copy the `backend-agent/.env.example` file to `.env` in `backend-agent/` and configure your local settings:
 
 ```env
 # Disable Secret Manager loading
@@ -482,7 +482,7 @@ REGION=us-central1
 
 ### Configuration
 
-Create a `.env.local` file in `frontend-nextjs/`:
+Copy the `frontend-nextjs/.env.example` file to `.env.local` in `frontend-nextjs/` and configure your local settings:
 
 ```env
 # Backend URL (Proxy or Direct)
@@ -762,10 +762,11 @@ This step sets up the VPC, Database, Artifact Registry, Cloud Build Triggers, an
 
 ### Step 1: Create `terraform.tfvars`
 
-Navigate to the terraform directory and create a `terraform.tfvars` file:
+Navigate to the terraform directory, copy the `terraform.tfvars.example` template to `terraform.tfvars` and fill in the variables:
 
 ```bash
 cd terraform
+cp terraform.tfvars.example terraform.tfvars
 ```
 
 ```hcl
