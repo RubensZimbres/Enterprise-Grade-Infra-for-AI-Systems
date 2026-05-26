@@ -15,40 +15,39 @@ steps:
         npm test
     id: 'Run Tests'
 
-  # 1. Fetch secrets from Secret Manager
-  - name: 'gcr.io/cloud-builders/gcloud'
+  # 1. Build the Container Image using the Dockerfile in frontend-nextjs/
+  - name: 'gcr.io/cloud-builders/docker'
     entrypoint: 'bash'
+    secretEnv: 
+      - 'NEXT_PUBLIC_FIREBASE_API_KEY'
+      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'
+      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'
+      - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+      - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'
+      - 'NEXT_PUBLIC_FIREBASE_APP_ID'
     args:
       - '-c'
       - |
-        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_API_KEY --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-api-key.txt
-        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-auth-domain.txt
-        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_PROJECT_ID --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-project-id.txt
-        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-storage-bucket.txt
-        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-messaging-sender-id.txt
-        gcloud secrets versions access latest --secret=NEXT_PUBLIC_FIREBASE_APP_ID --format='get(payload.data)' | tr '_-' '/+' | base64 -d > decrypted-app-id.txt
-    id: 'Fetch Secrets'
-
-  # 2. Build the Container Image using the Dockerfile in frontend-nextjs/
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'build'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_API_KEY=$(cat decrypted-api-key.txt)'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$(cat decrypted-auth-domain.txt)'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_PROJECT_ID=$(cat decrypted-project-id.txt)'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$(cat decrypted-storage-bucket.txt)'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$(cat decrypted-messaging-sender-id.txt)'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_FIREBASE_APP_ID=$(cat decrypted-app-id.txt)'
-      - '-t'
-      - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/frontend:$COMMIT_SHA'
-      - './frontend-nextjs'
+        docker build \
+          --build-arg NEXT_PUBLIC_FIREBASE_API_KEY="$$NEXT_PUBLIC_FIREBASE_API_KEY" \
+          --build-arg NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="$$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN" \
+          --build-arg NEXT_PUBLIC_FIREBASE_PROJECT_ID="$$NEXT_PUBLIC_FIREBASE_PROJECT_ID" \
+          --build-arg NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="$$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET" \
+          --build-arg NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="$$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID" \
+          --build-arg NEXT_PUBLIC_FIREBASE_APP_ID="$$NEXT_PUBLIC_FIREBASE_APP_ID" \
+          -t $_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/frontend:$COMMIT_SHA \
+          ./frontend-nextjs
     id: 'Build Frontend'
+
+  # 2. Hard Gate: Vulnerability Scan using Trivy
+  - name: 'aquasec/trivy'
+    args:
+      - 'image'
+      - '--exit-code=1'
+      - '--severity=HIGH,CRITICAL'
+      - '--no-progress'
+      - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/frontend:$COMMIT_SHA'
+    id: 'Vulnerability Scan Gate'
 
   # 3. Push the Image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
@@ -70,6 +69,21 @@ steps:
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
     id: 'Deploy Frontend'
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_FIREBASE_API_KEY/versions/latest
+    env: 'NEXT_PUBLIC_FIREBASE_API_KEY'
+  - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN/versions/latest
+    env: 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'
+  - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_FIREBASE_PROJECT_ID/versions/latest
+    env: 'NEXT_PUBLIC_FIREBASE_PROJECT_ID'
+  - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET/versions/latest
+    env: 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET'
+  - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID/versions/latest
+    env: 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'
+  - versionName: projects/$PROJECT_ID/secrets/NEXT_PUBLIC_FIREBASE_APP_ID/versions/latest
+    env: 'NEXT_PUBLIC_FIREBASE_APP_ID'
 
 images:
   - '$_AR_HOSTNAME/$PROJECT_ID/cloud-run-source-deploy/frontend:$COMMIT_SHA'
