@@ -1,0 +1,32 @@
+steps:
+  # 1. Terraform Init
+  - name: 'hashicorp/terraform:1.5.0'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd terraform
+        terraform init
+    id: 'Terraform Init'
+
+  # 2. Drift Detection
+  - name: 'hashicorp/terraform:1.5.0'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd terraform
+        EXIT_CODE=0
+        terraform plan -detailed-exitcode -out=tfplan || EXIT_CODE=$?
+        if [ "$EXIT_CODE" = "2" ]; then
+          echo "ALERT: Configuration drift detected! Manual changes found in the cloud."
+          exit 1
+        elif [ "$EXIT_CODE" = "1" ]; then
+          echo "ERROR: Terraform plan failed."
+          exit 1
+        fi
+        echo "No drift detected."
+    id: 'Drift Detection'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

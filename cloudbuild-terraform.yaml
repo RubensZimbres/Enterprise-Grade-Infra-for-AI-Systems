@@ -1,0 +1,52 @@
+steps:
+  # 1. Validation Logic
+  - name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        chmod +x validate_naming.sh
+        ./validate_naming.sh
+    id: 'Validate Naming Conventions'
+
+  # 2. Terraform Init
+  - name: 'hashicorp/terraform:1.5.0'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd terraform
+        terraform init
+    id: 'Terraform Init'
+
+  # 3. Policy as Code (tfsec) - Using tfsec to meet "Policy as Code" requirement and block non-compliant
+  - name: 'aquasec/tfsec:latest'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        tfsec terraform/ 
+    id: 'Policy as Code'
+
+  # 4. Terraform Plan
+  - name: 'hashicorp/terraform:1.5.0'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd terraform
+        terraform plan -out=tfplan
+    id: 'Terraform Plan'
+
+  # 5. Terraform Apply
+  - name: 'hashicorp/terraform:1.5.0'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        cd terraform
+        terraform apply -auto-approve tfplan
+    id: 'Terraform Apply'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
