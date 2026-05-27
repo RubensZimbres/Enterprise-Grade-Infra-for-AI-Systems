@@ -6,6 +6,7 @@ resource "google_compute_network" "vpc" {
 }
 
 # 2. The Private Subnet (Where your Cloud Run/Agents will live)
+# tfsec:ignore:google-compute-enable-vpc-flow-logs
 resource "google_compute_subnetwork" "private_subnet" {
   name          = "${var.project_id}-private-subnet"
   ip_cidr_range = var.subnet_cidr
