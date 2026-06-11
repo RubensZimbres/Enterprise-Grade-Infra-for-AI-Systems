@@ -24,7 +24,7 @@ export async function GET(req: Request) {
       // In a real app, use a JWT or secure session store
       cookies().set("payment_completed", "true", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "strict",
         path: "/",
         maxAge: 60 * 60 * 24 * 30, // 30 days
