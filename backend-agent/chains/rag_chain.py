@@ -8,7 +8,6 @@ from langchain_postgres import PGVector
 from langchain_google_firestore import FirestoreChatMessageHistory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.runnables import RunnableLambda
 from langchain_core.globals import set_llm_cache
 from langchain_redis import RedisSemanticCache
 from tenacity import (
