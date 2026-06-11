@@ -2,6 +2,9 @@ resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
 
+# CMEK intentionally omitted: Google-managed encryption is sufficient for this
+# deployment scope; managing a KMS key adds operational cost/complexity.
+#tfsec:ignore:google-storage-bucket-encryption-customer-key
 resource "google_storage_bucket" "data_bucket" {
   name          = "${var.bucket_name_prefix}-${random_id.bucket_suffix.hex}"
   location      = var.region
@@ -50,6 +53,7 @@ resource "google_storage_bucket" "data_bucket" {
 }
 
 # Bucket for Cloud Function Source Code
+#tfsec:ignore:google-storage-bucket-encryption-customer-key
 resource "google_storage_bucket" "source_bucket" {
   name                        = "${var.project_id}-gcf-source-${random_id.bucket_suffix.hex}"
   location                    = var.region
