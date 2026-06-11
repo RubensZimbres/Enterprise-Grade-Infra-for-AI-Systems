@@ -154,7 +154,7 @@ rag_chain = (
     {
         "context": (lambda x: x["question"]) | get_retriever() | format_docs,
         "question": lambda x: x["question"],
-        "history": lambda x: x["history"] # Pass through history
+        "history": lambda x: x["history"],  # Pass through history
     }
     | prompt
     | llm

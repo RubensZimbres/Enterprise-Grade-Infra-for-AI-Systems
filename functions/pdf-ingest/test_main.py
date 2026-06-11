@@ -67,3 +67,41 @@ def test_ingest_pdf_skip_non_pdf(mock_storage):
 
     # Verify NO Download
     mock_storage.return_value.bucket.assert_not_called()
+
+
+@patch("main.storage.Client")
+@patch("main.asyncio.run")
+def test_ingest_pdf_error_handling(mock_asyncio_run, mock_storage):
+    # Setup Mocks
+    mock_bucket = MagicMock()
+    mock_blob = MagicMock()
+    mock_storage.return_value.bucket.return_value = mock_bucket
+    mock_bucket.blob.return_value = mock_blob
+
+    # Make asyncio.run raise an exception containing sensitive data
+    mock_asyncio_run.side_effect = Exception(
+        "Sensitive data: internal server IP 10.0.0.5"
+    )
+
+    # Event Data
+    data = {"bucket": "test-bucket", "name": "test-doc.pdf"}
+    event = MockCloudEvent(data)
+
+    # Run Function and capture stdout to ensure sensitive data is not printed
+    import sys
+    from io import StringIO
+
+    captured_output = StringIO()
+    sys.stdout = captured_output
+
+    try:
+        main.ingest_pdf(event)
+    except Exception as e:
+        # Expected to raise
+        assert str(e) == "Sensitive data: internal server IP 10.0.0.5"
+    finally:
+        sys.stdout = sys.__stdout__
+
+    output = captured_output.getvalue()
+    assert "Sensitive data: internal server IP 10.0.0.5" not in output
+    assert "❌ Error processing document" in output
