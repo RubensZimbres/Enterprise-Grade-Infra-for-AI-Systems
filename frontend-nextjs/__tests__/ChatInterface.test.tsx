@@ -29,11 +29,7 @@ describe("ChatPage", () => {
     // Mock scrollIntoView
     Element.prototype.scrollIntoView = mockScrollIntoView;
     // Mock TextDecoder
-    global.TextDecoder = class {
-      decode(chunk: any) {
-        return chunk ? String.fromCharCode(...chunk) : "";
-      }
-    } as any;
+    global.TextDecoder = require("util").TextDecoder as any;
   });
 
   beforeEach(() => {
